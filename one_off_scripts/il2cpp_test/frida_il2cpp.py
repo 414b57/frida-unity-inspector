@@ -4,6 +4,7 @@ import os
 import frida
 
 package_name = 'com.PlapPlap.FridaTestingEnv'
+# package_name = 'com.master.triple3d.find'
 
 def on_message(message: any, data: bytes | None) -> None:
     print(f"Received message: {message}, data: {data}")

@@ -9,13 +9,13 @@ function perform(): void {
         Il2Cpp.mainThread.schedule(() => {
             console.log("[+] IL2CPP attached");
 
-            const Core          = Il2Cpp.domain.assembly("UnityEngine.CoreModule").image;
-            const Camera        = Core.class("UnityEngine.Camera");
+            const Core = Il2Cpp.domain.assembly("UnityEngine.CoreModule").image;
+            const Camera = Core.class("UnityEngine.Camera");
             const RenderTexture = Core.class("UnityEngine.RenderTexture");
             const CommandBuffer = Core.class("UnityEngine.Rendering.CommandBuffer");
-            const Graphics      = Core.class("UnityEngine.Graphics");
-            const RPM           = Core.class("UnityEngine.Rendering.RenderPipelineManager");
-            const GF            = Core.class("UnityEngine.Experimental.Rendering.GraphicsFormat");
+            const Graphics = Core.class("UnityEngine.Graphics");
+            const RPM = Core.class("UnityEngine.Rendering.RenderPipelineManager");
+            const GF = Core.class("UnityEngine.Experimental.Rendering.GraphicsFormat");
 
             const DST_FORMAT = GF.field(SWAP_RB ? "B8G8R8A8_UNorm" : "R8G8B8A8_UNorm").value as any;
             console.log("[+] dstFormat = " + DST_FORMAT);
@@ -28,7 +28,7 @@ function perform(): void {
                 return;
             }
 
-            // ---- One-time setup: RT, camera redirect, readback buffers ----
+            // Setup
             const W       = camera.method<number>("get_pixelWidth").invoke();
             const H       = camera.method<number>("get_pixelHeight").invoke();
             const byteLen = W * H * 4;
@@ -39,8 +39,8 @@ function perform(): void {
 
             const dataBuf   = Memory.alloc(byteLen);
             const structPtr = Memory.alloc(16);
-            structPtr.writePointer(dataBuf);        // nativeArrayBuffer @0
-            structPtr.add(8).writeS64(byteLen);     // lengthInBytes    @8
+            structPtr.writePointer(dataBuf); // nativeArrayBuffer @0
+            structPtr.add(8).writeS64(byteLen); // lengthInBytes    @8
             const cmd = CommandBuffer.new();
 
             console.log("[+] setup done, " + W + "x" + H + " (" + byteLen + " bytes)");
@@ -48,8 +48,8 @@ function perform(): void {
             // ---- Per-frame work ----
             const requestReadback = (): void => {
                 cmd.method("Clear", 0).invoke();
-                const selfPtr = cmd.field("m_Ptr").value as NativePointer;       // CommandBuffer native ptr
-                const srcPtr  = rt.field("m_CachedPtr").value as NativePointer;   // UnityEngine.Object native ptr
+                const selfPtr = cmd.field("m_Ptr").value as NativePointer; // CommandBuffer native ptr
+                const srcPtr  = rt.field("m_CachedPtr").value as NativePointer; // UnityEngine.Object native ptr
 
                 inj.invoke(
                     selfPtr,      // _unity_self  : IntPtr
@@ -78,7 +78,7 @@ function perform(): void {
                 camera.method("set_targetTexture", 1).invoke(ptr(0));
             };
 
-            // ---- Hook: only orchestrates timing, holds no setup logic ----
+            // Hook into the end-of-frame callback to poll for the readback result.
             let frame = -1;
             let done  = false;
             const hooked = RPM.method("EndCameraRendering", 2);
