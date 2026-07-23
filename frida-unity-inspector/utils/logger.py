@@ -125,10 +125,7 @@ class WebSocketLogHandler(logging.Handler):
                 "timestamp": datetime.datetime.fromtimestamp(record.created).isoformat(),
                 "logger": record.name,
                 "level": record.levelname,
-                "message": self.format(record),
-                "module": getattr(record, "module", None),
-                "device_id": getattr(record, "device_id", None),
-                "bot_name": getattr(record, "bot_name", None),
+                "message": self.format(record)
             }
             try:
                 self.queue.put_nowait(log_entry)
