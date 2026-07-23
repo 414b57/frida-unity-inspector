@@ -66,12 +66,14 @@ class BaseDataSource(ABC):
         """Get the list of log subscribers."""
         return self._log_subscribers
 
-    def subscribe(self, callback: LogCallback) -> None:
+    def subscribe(self, callback: LogCallback) -> Callable[[], None]:
         """Register ``callback`` for future log entries."""
         if callback in self._log_subscribers:
             self.logger.warning("Attempted to subscribe a callback that was already subscribed.")
         else:
             self._log_subscribers.append(callback)
+
+        return lambda: self.unsubscribe(callback)
 
     def unsubscribe(self, callback: LogCallback) -> None:
         """Unregister ``callback`` from future log entries."""

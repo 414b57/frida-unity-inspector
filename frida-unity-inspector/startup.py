@@ -3,12 +3,14 @@ from __future__ import annotations
 from dotenv import load_dotenv
 import argparse
 import os
-import asyncio
 import logging
 
-from utils.logger import setup_logging, LEVEL_MAP
+import uvicorn
 
-from data_source import BaseDataSource, MockDataSource#, FridaData
+from .utils.logger import setup_logging, LEVEL_MAP
+
+from .data_source import BaseDataSource, MockDataSource#, FridaData
+from .web_apps import BaseWebApp, UnityEditorWebApp, SimpleListWebApp
 
 log = logging.getLogger("fui.startup")
 
@@ -48,6 +50,14 @@ def parse_args() -> argparse.Namespace:
     hosting_group = p.add_argument_group(title="Web Hosting")
     hosting_group.add_argument("--host", default=os.environ.get("FUI_HOST", "127.0.0.1"), help="Address to bind the web server to (default: %(default)s)")
     hosting_group.add_argument("--port", type=int, default=int(os.environ.get("FUI_PORT", "8000")), help="Port to bind the web server to (default: %(default)s)")
+    hosting_exclusive_group = hosting_group.add_mutually_exclusive_group()
+    hosting_exclusive_group.add_argument("--unity_editor", action="store_true", dest="web_app", default=argparse.SUPPRESS, help="Use the Unity Editor web app (default)")
+    hosting_exclusive_group.add_argument("--simple_list", action="store_const", dest="web_app", const="simple_list", default=argparse.SUPPRESS, help="Use the simple list web app")
+    # TODO - other simple / test ones
+    hosting_exclusive_group.add_argument("--web_app",
+                                        choices=["unity_editor", "simple_list"],
+                                        default=os.environ.get("FUI_WEB_APP", "unity_editor"),
+                                        help="Define which web app to serve.")
 
     return p.parse_args()
 
@@ -59,6 +69,14 @@ def build_data_source(data_source: str) -> BaseDataSource:
         return MockDataSource()
 
     raise ValueError(f"Unknown Data source specified - {data_source}")
+
+def build_web_app(web_app: str, data_source: BaseDataSource) -> BaseWebApp:
+    if web_app == "unity_editor":
+        return UnityEditorWebApp(data_source)
+    elif web_app == "simple_list":
+        return SimpleListWebApp(data_source)
+
+    raise ValueError(f"Unknown Web App specified - {web_app}")
 
 def main():
     load_dotenv()
@@ -75,6 +93,12 @@ def main():
 
     data_source = build_data_source(data_source_type)
     log.info(f"Data source {data_source_type} initialized: {data_source}")
+
+    web_app = build_web_app(args.web_app, data_source)
+    log.info(f"Web app {args.web_app} initialized: {web_app}")
+
+    log.info(f"Starting web server at {args.host}:{args.port}...")
+    uvicorn.run(web_app, host=args.host, port=args.port, log_level=LEVEL_MAP.get(log_level.lower(), "info"))
 
 if __name__ == "__main__":
     main()
