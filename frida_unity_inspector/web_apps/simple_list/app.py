@@ -29,6 +29,9 @@ class SimpleListWebApp(BaseWebApp):
 
         # API
         self.add_api_route("/api/status", self.status, methods=["GET"])
+        self.add_api_route("/api/game_context", self.game_context, methods=["GET"])
+        self.add_api_route("/api/scenes", self.scenes, methods=["GET"])
+        self.add_api_route("/api/current_scene", self.current_scene, methods=["GET"])
 
     # -- pages ------
     async def index(self) -> FileResponse:
@@ -37,4 +40,13 @@ class SimpleListWebApp(BaseWebApp):
     # -- REST API ---
     async def status(self) -> dict:
         return self.datasource.status().model_dump()
+
+    async def game_context(self) -> dict:
+        return self.datasource.get_game_context().model_dump()
+
+    async def scenes(self) -> list[dict]:
+        return [scene.model_dump() for scene in self.datasource.get_scenes()]
+
+    async def current_scene(self) -> dict:
+        return self.datasource.get_current_scene().model_dump()
 

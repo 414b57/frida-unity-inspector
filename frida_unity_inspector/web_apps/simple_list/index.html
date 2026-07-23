@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frida Unity Inspector - Simple List</title>
+    <style>
+        body {
+            font-family: Consolas, monospace;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            margin: 0;
+            padding: 1rem 2rem;
+        }
+        h1 { font-size: 1.3rem; }
+        h2 {
+            font-size: 1.1rem;
+            border-bottom: 1px solid #3c3c3c;
+            padding-bottom: 0.25rem;
+        }
+        section { margin-bottom: 1.5rem; }
+        .pill {
+            display: inline-block;
+            padding: 0.1rem 0.5rem;
+            border-radius: 0.75rem;
+            font-size: 0.85rem;
+            background: #3c3c3c;
+            margin: 0.1rem;
+        }
+        .ok { background: #1e5c2f; }
+        .bad { background: #6e2222; }
+        .muted { color: #808080; }
+        .error { color: #f48771; }
+        ul { margin: 0.25rem 0; padding-left: 1.5rem; }
+        li { margin: 0.1rem 0; }
+        .node-meta { color: #808080; font-size: 0.85rem; }
+        .inactive { opacity: 0.5; }
+        button {
+            font-family: inherit;
+            background: #3c3c3c;
+            color: #d4d4d4;
+            border: 1px solid #555;
+            border-radius: 0.25rem;
+            padding: 0.2rem 0.75rem;
+            cursor: pointer;
+        }
+        button:hover { background: #4c4c4c; }
+    </style>
+</head>
+<body>
+    <h1>Frida Unity Inspector <span class="muted">- Simple List</span></h1>
+    <button id="refresh">Refresh</button>
+
+    <section>
+        <h2>API Status</h2>
+        <div id="status" class="muted">Loading...</div>
+    </section>
+
+    <section>
+        <h2>Game Context</h2>
+        <div id="game-context" class="muted">Loading...</div>
+    </section>
+
+    <section>
+        <h2>Current Scene</h2>
+        <div id="current-scene" class="muted">Loading...</div>
+    </section>
+
+    <script>
+        async function fetchJson(url) {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
+            return res.json();
+        }
+
+        function el(tag, className, text) {
+            const e = document.createElement(tag);
+            if (className) e.className = className;
+            if (text !== undefined) e.textContent = text;
+            return e;
+        }
+
+        function showError(container, err) {
+            container.replaceChildren(el("div", "error", `Failed to load: ${err.message}`));
+        }
+
+        function renderStatus(container, status) {
+            container.replaceChildren();
+            const pill = el("span", `pill ${status.running ? "ok" : "bad"}`, status.running ? "RUNNING" : "STOPPED");
+            container.appendChild(pill);
+            if (status.message) container.appendChild(el("span", "muted", ` ${status.message}`));
+        }
+
+        function pillList(items) {
+            const wrap = el("span");
+            if (!items.length) wrap.appendChild(el("span", "muted", "(none)"));
+            for (const item of items) wrap.appendChild(el("span", "pill", item));
+            return wrap;
+        }
+
+        function renderGameContext(container, ctx) {
+            container.replaceChildren();
+            const list = el("ul");
+            const row = (label, valueNode) => {
+                const li = el("li");
+                li.appendChild(el("span", null, `${label}: `));
+                li.appendChild(valueNode);
+                list.appendChild(li);
+            };
+            row("Name", el("b", null, ctx.name));
+            row("Version", el("span", null, ctx.version));
+            row("Unity Version", el("span", null, ctx.unity_version));
+            row("Tags", pillList(ctx.tags));
+            row("Sorting Layers", pillList(ctx.sorting_layers));
+            row("Layers", pillList(Object.entries(ctx.layers).map(([i, name]) => `${i}: ${name}`)));
+            row("Rendering Layers", pillList(ctx.rendering_layers));
+            row("Declared Scenes", pillList(ctx.scenes.map(s => s.name)));
+            container.appendChild(list);
+        }
+
+        function renderNode(node) {
+            const li = el("li", node.data.active ? null : "inactive");
+            li.appendChild(el("span", null, node.name));
+
+            const meta = [];
+            if (node.data.tag !== "Untagged") meta.push(`tag=${node.data.tag}`);
+            meta.push(`layer=${node.data.layer}`);
+            if (node.data.is_static) meta.push("static");
+            if (!node.data.active) meta.push("inactive");
+            const components = node.data.components.map(c => c.name).join(", ");
+            if (components) meta.push(`[${components}]`);
+            li.appendChild(el("span", "node-meta", `  ${meta.join(" | ")}`));
+
+            if (node.children.length) {
+                const ul = el("ul");
+                for (const child of node.children) ul.appendChild(renderNode(child));
+                li.appendChild(ul);
+            }
+            return li;
+        }
+
+        function renderCurrentScene(container, scene) {
+            container.replaceChildren();
+            container.appendChild(el("div", null, `Scene: `));
+            container.lastChild.appendChild(el("b", null, scene.name));
+            const ul = el("ul");
+            if (!scene.roots.length) ul.appendChild(el("li", "muted", "(empty scene)"));
+            for (const root of scene.roots) ul.appendChild(renderNode(root));
+            container.appendChild(ul);
+        }
+
+        async function refresh() {
+            const statusEl = document.getElementById("status");
+            const ctxEl = document.getElementById("game-context");
+            const sceneEl = document.getElementById("current-scene");
+
+            fetchJson("/api/status").then(s => renderStatus(statusEl, s)).catch(e => showError(statusEl, e));
+            fetchJson("/api/game_context").then(c => renderGameContext(ctxEl, c)).catch(e => showError(ctxEl, e));
+            fetchJson("/api/current_scene").then(s => renderCurrentScene(sceneEl, s)).catch(e => showError(sceneEl, e));
+        }
+
+        document.getElementById("refresh").addEventListener("click", refresh);
+        refresh();
+    </script>
+</body>
+</html>
