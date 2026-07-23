@@ -9,7 +9,7 @@ import uvicorn
 
 from .utils.logger import setup_logging, LEVEL_MAP
 
-from .data_source import BaseDataSource, MockDataSource#, FridaData
+from .data_source import BaseDataSource, BasicMockDataSource#, FridaData
 from .web_apps import BaseWebApp, UnityEditorWebApp, SimpleListWebApp
 
 log = logging.getLogger("fui.startup")
@@ -46,12 +46,13 @@ def parse_args() -> argparse.Namespace:
 
     data_parent_group = p.add_argument_group(title="Data Source")
     data_exclusive_group = data_parent_group.add_mutually_exclusive_group()
-    data_exclusive_group.add_argument("--mock", action="store_const", dest="data_source", const="mock", default=argparse.SUPPRESS, help="Use `mock` data source")
+    data_exclusive_group.add_argument("--basic_mock", action="store_const", dest="data_source", const="basic_mock", default=argparse.SUPPRESS, help="Use `basic_mock` data source")
+    data_exclusive_group.add_argument("--complex_mock", action="store_const", dest="data_source", const="complex_mock", default=argparse.SUPPRESS, help="Use `complex_mock` data source")
     data_exclusive_group.add_argument("--frida", action="store_const", dest="data_source", const="mock", default=argparse.SUPPRESS, help="Use `frida` data source")
     data_exclusive_group.add_argument("--data_source",
-                                    choices=["mock", "frida"],
+                                    choices=["basic_mock", "complex_mock", "frida"],
                                     default=os.environ.get("FUI_DATA_SOURCE", "frida"),
-                                    help="Define where data is gathered from, `mock` for test data | `frida` for real data")
+                                    help="Define where data is gathered from, `basic_mock`/`complex_mock` for test data | `frida` for real data")
 
     device_group = p.add_argument_group(title="Device")
     device_group.add_argument("--device", default=os.environ.get("FUI_DEVICE", "local"), help="frida device: local | usb | <device-id> (default: %(default)s)")
@@ -76,8 +77,8 @@ def parse_args() -> argparse.Namespace:
 def build_data_source(data_source: str) -> BaseDataSource:
     if data_source == "frida":
         raise NotImplementedError("Frida data sources not yet implemented")
-    elif data_source == "mock":
-        return MockDataSource()
+    elif data_source == "basic_mock":
+        return BasicMockDataSource()
 
     raise ValueError(f"Unknown Data source specified - {data_source}")
 

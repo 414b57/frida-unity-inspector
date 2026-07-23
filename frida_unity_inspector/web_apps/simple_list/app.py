@@ -13,7 +13,7 @@ import logging
 from typing_extensions import override
 
 from ..base_app import BaseWebApp
-from ...data_source import BaseDataSource, MockDataSource#, FridaData
+from ...data_source import BaseDataSource
 from ...data_source import LogType, IconName, PropertyKind, GameContext, SceneDeclaration, LogEntry, Status, Scene, HierarchyNode, GameObjectData, Component, Property
 
 INDEX_FILE = Path(__file__).resolve().parent / "index.html"

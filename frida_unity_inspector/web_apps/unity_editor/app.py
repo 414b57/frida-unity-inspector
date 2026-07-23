@@ -14,7 +14,7 @@ from typing_extensions import override
 
 from ..base_app import BaseWebApp
 from ..websocket_hub import WebSocketHub
-from ...data_source import BaseDataSource, MockDataSource#, FridaData
+from ...data_source import BaseDataSource
 from ...data_source import LogType, IconName, PropertyKind, GameContext, SceneDeclaration, LogEntry, Status, Scene, HierarchyNode, GameObjectData, Component, Property
 
 CURRENT_DIR = Path(__file__).resolve().parent

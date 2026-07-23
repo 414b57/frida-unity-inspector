@@ -6,8 +6,8 @@ from ..models import LogType, IconName, PropertyKind, GameContext, SceneDeclarat
 
 from ..base_data import BaseDataSource, LogCallback
 
-class MockDataSource(BaseDataSource):
-    """Mock implementation of BaseData for testing and development."""
+class BasicMockDataSource(BaseDataSource):
+    """Basic Mock implementation of BaseData for testing and development."""
     def __init__(self) -> None:
         super().__init__()
 
