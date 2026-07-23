@@ -54,6 +54,7 @@ function perform(): void {
             freecamTransform.method("set_position", 1).invoke(spawnPos.unbox());
             freecamTransform.ref(true)
 
+            // @ts-ignore
             console.log("[+] Freecam created at " + spawnPos.method("ToString", 0).invoke().toString());
 
             // Setup rendering pipeline
@@ -98,6 +99,7 @@ function perform(): void {
                         console.log("[+] Readback ready, sending image data (" + BYTE_LEN + " bytes)");
                         const imageData = dataBuf.readByteArray(BYTE_LEN);
                         send({type: "frame", width: W, height: H, format: SWAP_RB ? "BGRA" : "RGBA"}, imageData);
+                        // @ts-ignore
                         dataBuf.writeByteArray(new Uint8Array(BYTE_LEN));
                         // Reset frame cont, so can query another readback next frame
                         frameCount = -2;
