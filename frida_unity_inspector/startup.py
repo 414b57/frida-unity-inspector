@@ -21,17 +21,28 @@ def parse_bool(val: str | None) -> bool:
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Frida Unity Inspector web app")
 
-    logging_parent_group = p.add_argument_group(title="Logging")
-    exclusive_logging = logging_parent_group.add_mutually_exclusive_group()
-    exclusive_logging.add_argument("--debug", action="store_const", dest="log_level", const="DEBUG", default=argparse.SUPPRESS, help="enable debug logging")
-    exclusive_logging.add_argument("--verbose", action="store_const", dest="log_level", const="VERBOSE", default=argparse.SUPPRESS, help="enable verbose logging")
-    exclusive_logging.add_argument("--trace", action="store_const", dest="log_level", const="TRACE", default=argparse.SUPPRESS, help="enable trace logging")
-    exclusive_logging.add_argument("--spam", action="store_const", dest="log_level", const="SPAM", default=argparse.SUPPRESS, help="enable spam logging")
-    exclusive_logging.add_argument("--god-save-you", action="store_const", dest="log_level", const="GOD_SAVE_YOU", default=argparse.SUPPRESS, help="enable god-save-you logging")
-    exclusive_logging.add_argument("--log-level",
+    fui_logging_parent_group = p.add_argument_group(title="Logging")
+    fui_exclusive_logging = fui_logging_parent_group.add_mutually_exclusive_group()
+    fui_exclusive_logging.add_argument("--debug", action="store_const", dest="log_level", const="DEBUG", default=argparse.SUPPRESS, help="enable debug logging")
+    fui_exclusive_logging.add_argument("--verbose", action="store_const", dest="log_level", const="VERBOSE", default=argparse.SUPPRESS, help="enable verbose logging")
+    fui_exclusive_logging.add_argument("--trace", action="store_const", dest="log_level", const="TRACE", default=argparse.SUPPRESS, help="enable trace logging")
+    fui_exclusive_logging.add_argument("--spam", action="store_const", dest="log_level", const="SPAM", default=argparse.SUPPRESS, help="enable spam logging")
+    fui_exclusive_logging.add_argument("--god-save-you", action="store_const", dest="log_level", const="GOD_SAVE_YOU", default=argparse.SUPPRESS, help="enable god-save-you logging")
+    fui_exclusive_logging.add_argument("--log-level",
                                 choices=LEVEL_MAP.keys(),
                                 default=os.environ.get("FUI_LOG_LEVEL", "INFO"),
                                 help="set log level")
+
+    uvicorn_logging_parent_group = p.add_argument_group(title="Uvicorn Logging")
+    uvicorn_exclusive_logging = uvicorn_logging_parent_group.add_mutually_exclusive_group()
+    uvicorn_exclusive_logging.add_argument("--uvicorn-debug", action="store_const", dest="uvicorn_log_level", const="debug", default=argparse.SUPPRESS, help="enable uvicorn debug logging")
+    uvicorn_exclusive_logging.add_argument("--uvicorn-trace", action="store_const", dest="uvicorn_log_level", const="trace", default=argparse.SUPPRESS, help="enable uvicorn trace logging")
+    uvicorn_exclusive_logging.add_argument("--uvicorn-quiet", action="store_const", dest="uvicorn_log_level", const="warning", default=argparse.SUPPRESS, help="only warnings and above")
+    uvicorn_exclusive_logging.add_argument("--uvicorn-silent", action="store_const", dest="uvicorn_log_level", const="critical", default=argparse.SUPPRESS, help="only critical")
+    uvicorn_exclusive_logging.add_argument("--uvicorn-log-level",
+                                            choices=["critical", "error", "warning", "info", "debug", "trace"],
+                                            default=os.environ.get("FUI_UVICORN_LOG_LEVEL", "info"),
+                                            help="set uvicorn log level")
 
     data_parent_group = p.add_argument_group(title="Data Source")
     data_exclusive_group = data_parent_group.add_mutually_exclusive_group()
@@ -97,8 +108,8 @@ def main():
     web_app = build_web_app(args.web_app, data_source)
     log.info(f"Web app {args.web_app} initialized: {web_app}")
 
-    log.info(f"Starting web server at {args.host}:{args.port}...")
-    uvicorn.run(web_app, host=args.host, port=args.port, log_level=LEVEL_MAP.get(log_level.lower(), "info"))
+    log.info(f"Starting web server at {args.host}:{args.port} with uvicorn log level: {args.uvicorn_log_level}...")
+    uvicorn.run(web_app, host=args.host, port=args.port, log_level=args.uvicorn_log_level)
 
 if __name__ == "__main__":
     main()
