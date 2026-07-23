@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import datetime
 
-from ..models import LogType, IconName, PropertyKind, GameContext, SceneDeclaration, LogEntry, Status, Scene, HierarchyNode, GameObjectData, Component, Property
+from ..models import LogType, IconName, GameContext, SceneDeclaration, LogEntry, Status, Scene, HierarchyNode, GameObjectData, Component
+from ..models import Vector2, Vector3, Color, Vector2Property, Vector3Property, FloatProperty, BoolProperty, StringProperty, EnumProperty, ColorProperty
 
 from ..base_data import BaseDataSource, LogCallback
 
@@ -35,9 +36,9 @@ class BasicMockDataSource(BaseDataSource):
                                     enabled=None, # Transform cannot be toggled
                                     expanded=True,
                                     properties=[
-                                        Property(label="Position", kind=PropertyKind.VECTOR3, value="(0, 1, -10)"),
-                                        Property(label="Rotation", kind=PropertyKind.VECTOR3, value="(0, 0, 0)"),
-                                        Property(label="Scale", kind=PropertyKind.VECTOR3, value="(1, 1, 1)"),
+                                        Vector3Property(label="Position", value=Vector3(x=0, y=1, z=-10)),
+                                        Vector3Property(label="Rotation", value=Vector3(x=0, y=0, z=0)),
+                                        Vector3Property(label="Scale", value=Vector3(x=1, y=1, z=1)),
                                     ]
                                 ),
                                 Component(
@@ -48,8 +49,8 @@ class BasicMockDataSource(BaseDataSource):
                                     enabled=True,
                                     expanded=True,
                                     properties=[
-                                        Property(label="Field of View", kind=PropertyKind.FLOAT, value=60.0),
-                                        Property(label="Clipping Planes", kind=PropertyKind.VECTOR2, value="(0.3, 1000)"),
+                                        FloatProperty(label="Field of View", value=60.0),
+                                        Vector2Property(label="Clipping Planes", value=Vector2(x=0.3, y=1000)),
                                     ]
                                 ),
                                 Component(
@@ -93,9 +94,9 @@ class BasicMockDataSource(BaseDataSource):
                                     enabled=None, # Transform cannot be toggled
                                     expanded=True,
                                     properties=[
-                                        Property(label="Position", kind=PropertyKind.VECTOR3, value="(0, 3, 0)"),
-                                        Property(label="Rotation", kind=PropertyKind.VECTOR3, value="(50, -30, 0)"),
-                                        Property(label="Scale", kind=PropertyKind.VECTOR3, value="(1, 1, 1)"),
+                                        Vector3Property(label="Position", value=Vector3(x=0, y=3, z=0)),
+                                        Vector3Property(label="Rotation", value=Vector3(x=50, y=-30, z=0)),
+                                        Vector3Property(label="Scale", value=Vector3(x=1, y=1, z=1)),
                                     ]
                                 ),
                                 Component(
@@ -106,9 +107,9 @@ class BasicMockDataSource(BaseDataSource):
                                     enabled=True,
                                     expanded=True,
                                     properties=[
-                                        Property(label="Type", kind=PropertyKind.STRING, value="Directional"),
-                                        Property(label="Color", kind=PropertyKind.COLOR, value="#FFFFFF"),
-                                        Property(label="Intensity", kind=PropertyKind.FLOAT, value=1.0),
+                                        EnumProperty(label="Type", options=["Spot", "Directional", "Point", "Area"], value="Directional"),
+                                        ColorProperty(label="Color", value=Color(r=1.0, g=1.0, b=1.0, a=1.0)),
+                                        FloatProperty(label="Intensity", value=1.0),
                                     ]
                                 ),
                                 Component(
@@ -142,9 +143,9 @@ class BasicMockDataSource(BaseDataSource):
                                     enabled=None, # Transform cannot be toggled
                                     expanded=True,
                                     properties=[
-                                        Property(label="Position", kind=PropertyKind.VECTOR3, value="(0, 0, 0)"),
-                                        Property(label="Rotation", kind=PropertyKind.VECTOR3, value="(0, 0, 0)"),
-                                        Property(label="Scale", kind=PropertyKind.VECTOR3, value="(1, 1, 1)"),
+                                        Vector3Property(label="Position", value=Vector3(x=0, y=0, z=0)),
+                                        Vector3Property(label="Rotation", value=Vector3(x=0, y=0, z=0)),
+                                        Vector3Property(label="Scale", value=Vector3(x=1, y=1, z=1)),
                                     ]
                                 )
                             ]
@@ -169,9 +170,9 @@ class BasicMockDataSource(BaseDataSource):
                                             enabled=None, # Transform cannot be toggled
                                             expanded=True,
                                             properties=[
-                                                Property(label="Position", kind=PropertyKind.VECTOR3, value="(0, 0.5, 0)"),
-                                                Property(label="Rotation", kind=PropertyKind.VECTOR3, value="(0, 0, 0)"),
-                                                Property(label="Scale", kind=PropertyKind.VECTOR3, value="(1, 1, 1)"),
+                                                Vector3Property(label="Position", value=Vector3(x=0, y=0.5, z=0)),
+                                                Vector3Property(label="Rotation", value=Vector3(x=0, y=0, z=0)),
+                                                Vector3Property(label="Scale", value=Vector3(x=1, y=1, z=1)),
                                             ]
                                         ),
                                         Component(
@@ -182,7 +183,7 @@ class BasicMockDataSource(BaseDataSource):
                                             enabled=True,
                                             expanded=True,
                                             properties=[
-                                                Property(label="Material", kind=PropertyKind.STRING, value="Default-Material"),
+                                                StringProperty(label="Material", value="Default-Material"),
                                             ]
                                         ),
                                         Component(
@@ -193,7 +194,7 @@ class BasicMockDataSource(BaseDataSource):
                                             enabled=True,
                                             expanded=True,
                                             properties=[
-                                                Property(label="Is Trigger", kind=PropertyKind.BOOL, value=False),
+                                                BoolProperty(label="Is Trigger", value=False),
                                             ]
                                         ),
                                         Component(
@@ -204,8 +205,8 @@ class BasicMockDataSource(BaseDataSource):
                                             enabled=True,
                                             expanded=True,
                                             properties=[
-                                                Property(label="Move Speed", kind=PropertyKind.FLOAT, value=5.0),
-                                                Property(label="Jump Height", kind=PropertyKind.FLOAT, value=2.0),
+                                                FloatProperty(label="Move Speed", value=5.0),
+                                                FloatProperty(label="Jump Height", value=2.0),
                                             ]
                                         )
                                     ]
