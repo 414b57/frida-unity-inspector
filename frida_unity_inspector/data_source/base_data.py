@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Callable
+from typing import Any, Callable
 
 from .models import LogType, IconName, PropertyKind, GameContext, SceneDeclaration, LogEntry, Status, Scene, HierarchyNode, GameObjectData, Component, Property
 
@@ -55,7 +55,13 @@ class BaseDataSource(ABC):
     def set_active(self, object_id: str, active: bool) -> None:
         """Toggle a GameObject's active state."""
 
-    # TODO - Set property method
+    @abstractmethod
+    def set_component_enabled(self, object_id: str, component_id: str, enabled: bool) -> None:
+        """Toggle a component's enabled state."""
+
+    @abstractmethod
+    def set_property(self, object_id: str, component_id: str, label: str, value: Any) -> Property:
+        """Set a component property's value and return the updated property."""
 
     # -- log streaming --
     def get_log_history(self) -> list[LogEntry]:

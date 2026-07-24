@@ -2,8 +2,14 @@ from __future__ import annotations
 
 import datetime
 
-from ..models import LogType, IconName, GameContext, SceneDeclaration, LogEntry, Status, Scene, HierarchyNode, GameObjectData, Component
+from typing import Any
+
+from pydantic import TypeAdapter
+
+from ..models import LogType, IconName, GameContext, SceneDeclaration, LogEntry, Status, Scene, HierarchyNode, GameObjectData, Component, Property
 from ..models import Vector2, Vector3, Color, Vector2Property, Vector3Property, FloatProperty, BoolProperty, StringProperty, EnumProperty, ColorProperty
+
+_PROPERTY_ADAPTER: TypeAdapter[Property] = TypeAdapter(Property)
 
 from ..base_data import BaseDataSource, LogCallback
 
@@ -332,6 +338,58 @@ class BasicMockDataSource(BaseDataSource):
         return self._scenes[0]
 
     # -- writing data --
+    def _find_node(self, object_id: str) -> HierarchyNode:
+        def walk(nodes: list[HierarchyNode]) -> HierarchyNode | None:
+            for node in nodes:
+                if node.id == object_id:
+                    return node
+                found = walk(node.children)
+                if found is not None:
+                    return found
+            return None
+
+        for scene in self._scenes:
+            found = walk(scene.roots)
+            if found is not None:
+                return found
+        raise KeyError(f"No GameObject with id '{object_id}'.")
+
+    def _find_component(self, object_id: str, component_id: str) -> Component:
+        node = self._find_node(object_id)
+        for component in node.data.components:
+            if component.id == component_id:
+                return component
+        raise KeyError(f"GameObject '{object_id}' has no component with id '{component_id}'.")
+
     def set_active(self, object_id: str, active: bool) -> None:
-        """Simulate toggling a GameObject's active state."""
-        self.logger.info(f"Set active state of {object_id} to {active}.")
+        """Toggle a GameObject's active state."""
+        node = self._find_node(object_id)
+        node.data.active = active
+        self.logger.info(f"Set active state of {object_id} ({node.name}) to {active}.")
+
+    def set_component_enabled(self, object_id: str, component_id: str, enabled: bool) -> None:
+        """Toggle a component's enabled state."""
+        component = self._find_component(object_id, component_id)
+        if component.enabled is None:
+            raise ValueError(f"Component '{component.name}' has no enable checkbox.")
+        component.enabled = enabled
+        self.logger.info(f"Set enabled state of {object_id}/{component_id} ({component.name}) to {enabled}.")
+
+    def set_property(self, object_id: str, component_id: str, label: str, value: Any) -> Property:
+        """Set a component property's value."""
+        component = self._find_component(object_id, component_id)
+        for index, prop in enumerate(component.properties):
+            if prop.label != label:
+                continue
+            if prop.read_only:
+                raise ValueError(f"Property '{label}' is read-only.")
+            if isinstance(prop, EnumProperty) and value not in prop.options:
+                raise ValueError(f"'{value}' is not one of {prop.options}.")
+
+            data = prop.model_dump()
+            data["value"] = value
+            new_prop = _PROPERTY_ADAPTER.validate_python(data)
+            component.properties[index] = new_prop
+            self.logger.info(f"Set property '{label}' of {object_id}/{component_id} ({component.name}) to {value!r}.")
+            return new_prop
+        raise KeyError(f"Component '{component_id}' has no property labeled '{label}'.")

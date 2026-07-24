@@ -10,6 +10,9 @@ import datetime
 import asyncio
 import logging
 
+from typing import Any
+
+from pydantic import BaseModel
 from typing_extensions import override
 
 from ..base_app import BaseWebApp
@@ -17,6 +20,25 @@ from ...data_source import BaseDataSource
 from ...data_source import LogType, IconName, PropertyKind, GameContext, SceneDeclaration, LogEntry, Status, Scene, HierarchyNode, GameObjectData, Component, Property
 
 INDEX_FILE = Path(__file__).resolve().parent / "index.html"
+
+
+# -- request bodies --
+class SetActiveRequest(BaseModel):
+    object_id: str
+    active: bool
+
+
+class SetComponentEnabledRequest(BaseModel):
+    object_id: str
+    component_id: str
+    enabled: bool
+
+
+class SetPropertyRequest(BaseModel):
+    object_id: str
+    component_id: str
+    label: str
+    value: Any
 
 
 class SimpleListWebApp(BaseWebApp):
@@ -33,11 +55,16 @@ class SimpleListWebApp(BaseWebApp):
         self.add_api_route("/api/scenes", self.scenes, methods=["GET"])
         self.add_api_route("/api/current_scene", self.current_scene, methods=["GET"])
 
+        self.add_api_route("/api/set_active", self.set_active, methods=["POST"])
+        self.add_api_route("/api/set_component_enabled", self.set_component_enabled, methods=["POST"])
+        self.add_api_route("/api/set_property", self.set_property, methods=["POST"])
+
     # -- pages ------
     async def index(self) -> FileResponse:
         return FileResponse(INDEX_FILE,)
 
     # -- REST API ---
+    # - Read -
     async def status(self) -> dict:
         return self.datasource.status().model_dump()
 
@@ -49,4 +76,30 @@ class SimpleListWebApp(BaseWebApp):
 
     async def current_scene(self) -> dict:
         return self.datasource.get_current_scene().model_dump()
+
+    # - Write -
+    async def set_active(self, request: SetActiveRequest) -> dict:
+        try:
+            self.datasource.set_active(request.object_id, request.active)
+        except KeyError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        return {"ok": True}
+
+    async def set_component_enabled(self, request: SetComponentEnabledRequest) -> dict:
+        try:
+            self.datasource.set_component_enabled(request.object_id, request.component_id, request.enabled)
+        except KeyError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return {"ok": True}
+
+    async def set_property(self, request: SetPropertyRequest) -> dict:
+        try:
+            updated = self.datasource.set_property(request.object_id, request.component_id, request.label, request.value)
+        except KeyError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return {"ok": True, "property": updated.model_dump()}
 

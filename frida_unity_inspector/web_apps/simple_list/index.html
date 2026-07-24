@@ -34,7 +34,7 @@
         ul { margin: 0.25rem 0; padding-left: 1.5rem; }
         li { margin: 0.1rem 0; }
         .node-meta { color: #808080; font-size: 0.85rem; }
-        .inactive { opacity: 0.5; }
+        .inactive > summary { opacity: 0.5; }
         button {
             font-family: inherit;
             background: #3c3c3c;
@@ -45,6 +45,72 @@
             cursor: pointer;
         }
         button:hover { background: #4c4c4c; }
+
+        /* -- scene tree -- */
+        details.node, details.component {
+            margin: 0.15rem 0;
+            border-left: 1px solid #3c3c3c;
+            padding-left: 0.5rem;
+        }
+        details.node > summary, details.component > summary {
+            cursor: pointer;
+            padding: 0.1rem 0.25rem;
+            border-radius: 0.25rem;
+        }
+        details.node > summary:hover, details.component > summary:hover { background: #2a2a2a; }
+        details.node > summary b { color: #dcdcaa; }
+        details.component { border-left-color: #2f4f6f; }
+        details.component > summary { color: #9cdcfe; }
+        .node-body, .component-body { padding-left: 1.25rem; }
+        .section-label { color: #808080; font-size: 0.85rem; margin-top: 0.25rem; }
+
+        /* -- property rows -- */
+        .prop-row {
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+            padding: 0.1rem 0.25rem;
+            border-radius: 0.25rem;
+            flex-wrap: wrap;
+        }
+        .prop-label {
+            min-width: 10rem;
+            color: #c8c8c8;
+        }
+        .prop-kind { color: #6a6a6a; font-size: 0.75rem; }
+        .prop-row input[type="number"],
+        .prop-row input[type="text"],
+        .prop-row select {
+            font-family: inherit;
+            font-size: 0.85rem;
+            background: #2a2a2a;
+            color: #d4d4d4;
+            border: 1px solid #555;
+            border-radius: 0.25rem;
+            padding: 0.1rem 0.3rem;
+        }
+        .prop-row input[type="number"] { width: 5.5rem; }
+        .prop-row input[type="text"] { width: 12rem; }
+        .prop-row input:disabled, .prop-row select:disabled { opacity: 0.5; }
+        .field-label { color: #808080; font-size: 0.8rem; }
+        .field-group { display: inline-flex; align-items: baseline; gap: 0.25rem; flex-wrap: wrap; }
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(4, auto);
+            gap: 0.15rem;
+        }
+        .color-swatch {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 1px solid #555;
+            border-radius: 0.2rem;
+            vertical-align: middle;
+        }
+        .json-input { width: 24rem !important; }
+
+        .flash-ok { background: #1e5c2f55; transition: background 0.15s; }
+        .flash-err { background: #6e222288; transition: background 0.15s; }
     </style>
 </head>
 <body>
@@ -63,13 +129,36 @@
 
     <section>
         <h2>Current Scene</h2>
+        <div>
+            <button id="expand-all">Expand all</button>
+            <button id="collapse-all">Collapse all</button>
+        </div>
         <div id="current-scene" class="muted">Loading...</div>
     </section>
 
     <script>
+        let layerNames = {};
+
         async function fetchJson(url) {
             const res = await fetch(url);
             if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
+            return res.json();
+        }
+
+        async function postJson(url, body) {
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) {
+                let detail = `HTTP ${res.status}`;
+                try {
+                    const data = await res.json();
+                    if (data.detail) detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+                } catch { /* keep generic detail */ }
+                throw new Error(detail);
+            }
             return res.json();
         }
 
@@ -82,6 +171,13 @@
 
         function showError(container, err) {
             container.replaceChildren(el("div", "error", `Failed to load: ${err.message}`));
+        }
+
+        function flash(element, ok) {
+            element.classList.remove("flash-ok", "flash-err");
+            void element.offsetWidth; // restart the transition
+            element.classList.add(ok ? "flash-ok" : "flash-err");
+            setTimeout(() => element.classList.remove("flash-ok", "flash-err"), 900);
         }
 
         function renderStatus(container, status) {
@@ -118,35 +214,284 @@
             container.appendChild(list);
         }
 
-        function renderNode(node) {
-            const li = el("li", node.data.active ? null : "inactive");
-            li.appendChild(el("span", null, node.name));
+        // -- property editors ------------------------------------------------
+        const INT_KINDS = new Set(["int", "long", "vector2int", "vector3int", "rectint", "boundsint", "color32"]);
+        const FIELD_SPECS = {
+            vector2: ["x", "y"],
+            vector3: ["x", "y", "z"],
+            vector4: ["x", "y", "z", "w"],
+            vector2int: ["x", "y"],
+            vector3int: ["x", "y", "z"],
+            quaternion: ["x", "y", "z", "w"],
+            rect: ["x", "y", "width", "height"],
+            rectint: ["x", "y", "width", "height"],
+            color: ["r", "g", "b", "a"],
+            color32: ["r", "g", "b", "a"],
+        };
+        const MATRIX_FIELDS = [];
+        for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) MATRIX_FIELDS.push(`m${r}${c}`);
 
-            const meta = [];
-            if (node.data.tag !== "Untagged") meta.push(`tag=${node.data.tag}`);
-            meta.push(`layer=${node.data.layer}`);
-            if (node.data.is_static) meta.push("static");
-            if (!node.data.active) meta.push("inactive");
-            const components = node.data.components.map(c => c.name).join(", ");
-            if (components) meta.push(`[${components}]`);
-            li.appendChild(el("span", "node-meta", `  ${meta.join(" | ")}`));
+        function numberInput(value, isInt) {
+            const input = el("input");
+            input.type = "number";
+            input.step = isInt ? "1" : "any";
+            input.value = value;
+            return input;
+        }
 
-            if (node.children.length) {
-                const ul = el("ul");
-                for (const child of node.children) ul.appendChild(renderNode(child));
-                li.appendChild(ul);
+        function fieldGroup(fields, values, isInt) {
+            // A row of labeled number inputs, e.g. "x [0] y [1] z [-10]".
+            const wrap = el("span", "field-group");
+            const inputs = {};
+            for (const field of fields) {
+                wrap.appendChild(el("span", "field-label", field));
+                const input = numberInput(values[field], isInt);
+                inputs[field] = input;
+                wrap.appendChild(input);
             }
-            return li;
+            const getValue = () => Object.fromEntries(fields.map(f => [f, isInt ? parseInt(inputs[f].value, 10) : parseFloat(inputs[f].value)]));
+            return { node: wrap, inputs, getValue };
+        }
+
+        function colorCss(kind, value) {
+            const scale = kind === "color" ? 255 : 1;
+            const to255 = (v) => Math.max(0, Math.min(255, Math.round(v * scale)));
+            return `rgba(${to255(value.r)}, ${to255(value.g)}, ${to255(value.b)}, ${kind === "color" ? value.a : value.a / 255})`;
+        }
+
+        // Builds the editor UI for one property. Returns {node, getValue} where
+        // getValue() produces the JSON value to send to the backend (it may throw
+        // for locally-invalid input, e.g. malformed JSON).
+        function buildEditor(prop) {
+            const kind = prop.kind;
+            const isInt = INT_KINDS.has(kind);
+
+            if (kind === "bool") {
+                const input = el("input");
+                input.type = "checkbox";
+                input.checked = prop.value;
+                return { node: input, getValue: () => input.checked };
+            }
+
+            if (kind === "int" || kind === "long" || kind === "float" || kind === "double") {
+                const input = numberInput(prop.value, isInt);
+                return { node: input, getValue: () => isInt ? parseInt(input.value, 10) : parseFloat(input.value) };
+            }
+
+            if (kind === "string" || kind === "char") {
+                const input = el("input");
+                input.type = "text";
+                input.value = prop.value;
+                if (kind === "char") { input.maxLength = 1; input.style.width = "2rem"; }
+                return { node: input, getValue: () => input.value };
+            }
+
+            if (kind === "enum") {
+                const select = el("select");
+                for (const option of prop.options) {
+                    const opt = el("option", null, option);
+                    opt.value = option;
+                    if (option === prop.value) opt.selected = true;
+                    select.appendChild(opt);
+                }
+                return { node: select, getValue: () => select.value };
+            }
+
+            if (kind in FIELD_SPECS) {
+                const group = fieldGroup(FIELD_SPECS[kind], prop.value, isInt);
+                if (kind === "color" || kind === "color32") {
+                    const wrap = el("span", "field-group");
+                    const swatch = el("span", "color-swatch");
+                    swatch.style.background = colorCss(kind, prop.value);
+                    wrap.appendChild(swatch);
+                    wrap.appendChild(group.node);
+                    return {
+                        node: wrap,
+                        getValue: () => {
+                            const value = group.getValue();
+                            swatch.style.background = colorCss(kind, value);
+                            return value;
+                        },
+                    };
+                }
+                return group;
+            }
+
+            if (kind === "matrix4x4") {
+                const grid = el("span", "matrix-grid");
+                const inputs = {};
+                for (const field of MATRIX_FIELDS) {
+                    const input = numberInput(prop.value[field], false);
+                    inputs[field] = input;
+                    grid.appendChild(input);
+                }
+                return { node: grid, getValue: () => Object.fromEntries(MATRIX_FIELDS.map(f => [f, parseFloat(inputs[f].value)])) };
+            }
+
+            if (kind === "bounds" || kind === "boundsint") {
+                const keys = kind === "bounds" ? ["center", "size"] : ["position", "size"];
+                const fields = ["x", "y", "z"];
+                const wrap = el("span", "field-group");
+                const groups = {};
+                for (const key of keys) {
+                    wrap.appendChild(el("span", "field-label", `${key}:`));
+                    const group = fieldGroup(fields, prop.value[key], isInt);
+                    groups[key] = group;
+                    wrap.appendChild(group.node);
+                }
+                return { node: wrap, getValue: () => Object.fromEntries(keys.map(k => [k, groups[k].getValue()])) };
+            }
+
+            // gradient / array / dictionary / object: edit as raw JSON.
+            const input = el("input", "json-input");
+            input.type = "text";
+            input.value = JSON.stringify(prop.value);
+            return { node: input, getValue: () => JSON.parse(input.value) };
+        }
+
+        function renderProperty(objectId, componentId, prop) {
+            const row = el("div", "prop-row");
+            row.appendChild(el("span", "prop-label", prop.label));
+            row.appendChild(el("span", "prop-kind", prop.read_only ? `${prop.kind} (read-only)` : prop.kind));
+
+            const editor = buildEditor(prop);
+            row.appendChild(editor.node);
+
+            const inputs = editor.node.matches("input, select") ? [editor.node] : [...editor.node.querySelectorAll("input, select")];
+            if (prop.read_only) {
+                for (const input of inputs) input.disabled = true;
+                return row;
+            }
+
+            const commit = async () => {
+                let value;
+                try {
+                    value = editor.getValue();
+                } catch (e) {
+                    flash(row, false);
+                    row.title = `Invalid value: ${e.message}`;
+                    return;
+                }
+                try {
+                    await postJson("/api/set_property", {
+                        object_id: objectId,
+                        component_id: componentId,
+                        label: prop.label,
+                        value: value,
+                    });
+                    row.title = "";
+                    flash(row, true);
+                } catch (e) {
+                    row.title = e.message;
+                    flash(row, false);
+                }
+            };
+            for (const input of inputs) input.addEventListener("change", commit);
+            return row;
+        }
+
+        // -- scene tree ------------------------------------------------------
+        function renderComponent(objectId, component) {
+            const details = el("details", "component");
+            details.open = component.expanded;
+
+            const summary = el("summary");
+            if (component.enabled !== null) {
+                const checkbox = el("input");
+                checkbox.type = "checkbox";
+                checkbox.checked = component.enabled;
+                checkbox.addEventListener("click", (e) => e.stopPropagation());
+                checkbox.addEventListener("change", async () => {
+                    try {
+                        await postJson("/api/set_component_enabled", {
+                            object_id: objectId,
+                            component_id: component.id,
+                            enabled: checkbox.checked,
+                        });
+                        flash(summary, true);
+                    } catch (e) {
+                        checkbox.checked = !checkbox.checked;
+                        summary.title = e.message;
+                        flash(summary, false);
+                    }
+                });
+                summary.appendChild(checkbox);
+                summary.appendChild(document.createTextNode(" "));
+            }
+            summary.appendChild(el("span", null, component.name));
+            summary.appendChild(el("span", "node-meta", `  (${component.type})`));
+            details.appendChild(summary);
+
+            const body = el("div", "component-body");
+            if (!component.properties.length) {
+                body.appendChild(el("div", "muted", "(no properties)"));
+            }
+            for (const prop of component.properties) {
+                body.appendChild(renderProperty(objectId, component.id, prop));
+            }
+            details.appendChild(body);
+            return details;
+        }
+
+        function renderNode(node) {
+            const details = el("details", node.data.active ? "node" : "node inactive");
+            details.open = true;
+
+            const summary = el("summary");
+            const activeCheckbox = el("input");
+            activeCheckbox.type = "checkbox";
+            activeCheckbox.checked = node.data.active;
+            activeCheckbox.title = "Active";
+            activeCheckbox.addEventListener("click", (e) => e.stopPropagation());
+            activeCheckbox.addEventListener("change", async () => {
+                try {
+                    await postJson("/api/set_active", { object_id: node.id, active: activeCheckbox.checked });
+                    details.classList.toggle("inactive", !activeCheckbox.checked);
+                    flash(summary, true);
+                } catch (e) {
+                    activeCheckbox.checked = !activeCheckbox.checked;
+                    summary.title = e.message;
+                    flash(summary, false);
+                }
+            });
+            summary.appendChild(activeCheckbox);
+            summary.appendChild(document.createTextNode(" "));
+            summary.appendChild(el("b", null, node.name));
+
+            const meta = [`id=${node.id}`];
+            if (node.data.tag !== "Untagged") meta.push(`tag=${node.data.tag}`);
+            const layerName = layerNames[node.data.layer];
+            meta.push(layerName ? `layer=${node.data.layer} (${layerName})` : `layer=${node.data.layer}`);
+            if (node.data.is_static) meta.push("static");
+            if (node.children.length) meta.push(`${node.children.length} child${node.children.length === 1 ? "" : "ren"}`);
+            summary.appendChild(el("span", "node-meta", `  ${meta.join(" | ")}`));
+            details.appendChild(summary);
+
+            const body = el("div", "node-body");
+            if (node.data.components.length) {
+                body.appendChild(el("div", "section-label", "Components:"));
+                for (const component of node.data.components) {
+                    body.appendChild(renderComponent(node.id, component));
+                }
+            }
+            if (node.children.length) {
+                body.appendChild(el("div", "section-label", "Children:"));
+                for (const child of node.children) {
+                    body.appendChild(renderNode(child));
+                }
+            }
+            details.appendChild(body);
+            return details;
         }
 
         function renderCurrentScene(container, scene) {
             container.replaceChildren();
-            container.appendChild(el("div", null, `Scene: `));
-            container.lastChild.appendChild(el("b", null, scene.name));
-            const ul = el("ul");
-            if (!scene.roots.length) ul.appendChild(el("li", "muted", "(empty scene)"));
-            for (const root of scene.roots) ul.appendChild(renderNode(root));
-            container.appendChild(ul);
+            container.classList.remove("muted");
+            const header = el("div", null, "Scene: ");
+            header.appendChild(el("b", null, scene.name));
+            container.appendChild(header);
+            if (!scene.roots.length) container.appendChild(el("div", "muted", "(empty scene)"));
+            for (const root of scene.roots) container.appendChild(renderNode(root));
         }
 
         async function refresh() {
@@ -155,11 +500,31 @@
             const sceneEl = document.getElementById("current-scene");
 
             fetchJson("/api/status").then(s => renderStatus(statusEl, s)).catch(e => showError(statusEl, e));
-            fetchJson("/api/game_context").then(c => renderGameContext(ctxEl, c)).catch(e => showError(ctxEl, e));
-            fetchJson("/api/current_scene").then(s => renderCurrentScene(sceneEl, s)).catch(e => showError(sceneEl, e));
+
+            // Load the game context first so the scene tree can show layer names.
+            try {
+                const ctx = await fetchJson("/api/game_context");
+                layerNames = ctx.layers || {};
+                renderGameContext(ctxEl, ctx);
+            } catch (e) {
+                layerNames = {};
+                showError(ctxEl, e);
+            }
+
+            try {
+                renderCurrentScene(sceneEl, await fetchJson("/api/current_scene"));
+            } catch (e) {
+                showError(sceneEl, e);
+            }
+        }
+
+        function setAllDetails(open) {
+            for (const details of document.querySelectorAll("#current-scene details")) details.open = open;
         }
 
         document.getElementById("refresh").addEventListener("click", refresh);
+        document.getElementById("expand-all").addEventListener("click", () => setAllDetails(true));
+        document.getElementById("collapse-all").addEventListener("click", () => setAllDetails(false));
         refresh();
     </script>
 </body>
