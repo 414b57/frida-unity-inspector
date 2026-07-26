@@ -76,17 +76,18 @@ class GameContext(BaseModel):
     state changes.
     """
 
-    name: str
+    # name: str # Cant figure out how to get this. UnityEngine.Application.productName is not available in IL2CPP.
     version: str
     unity_version: str
 
-    tags: list[str] = Field(default_factory=list)
-    sorting_layers: list[str] = Field(default_factory=list)
+    # tags: list[str] = Field(default_factory=list)
+    # sorting_layers: list[str] = Field(default_factory=list)
     # layers: list[str] = Field(default_factory=list)
-    layers: dict[int, str] = Field(default_factory=dict) # key = layer index (0-31), value = layer name
-    rendering_layers: list[str] = Field(default_factory=list)
+    # layers: dict[int, str] = Field(default_factory=dict) # key = layer index (0-31), value = layer name
+    # rendering_layers: list[str] = Field(default_factory=list)
 
-    scenes: list[SceneDeclaration] = Field(default_factory=list)
+    # scenes: list[SceneDeclaration] = Field(default_factory=list)
+    # Like before, cant figure out how to get this shit.
 
 class SceneDeclaration(BaseModel):
     """A scene that is known to the game, but not necessarily loaded. This should not change."""

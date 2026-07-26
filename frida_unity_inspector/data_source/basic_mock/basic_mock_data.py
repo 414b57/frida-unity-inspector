@@ -225,43 +225,43 @@ class BasicMockDataSource(BaseDataSource):
         ]
 
         self._game_context: GameContext = GameContext(
-            name="Mock Game",
+            # name="Mock Game",
             version="1.0.0",
             unity_version="6000.0f1",
 
-            tags=[
-                "Respawn",
-                "Finish",
-                "EditorOnly",
-                "MainCamera",
-                "Player",
-                "GameController"
-            ],
-
-            sorting_layers=["Default"],
-            layers={
-                0: "Default",
-                1: "TransparentFX",
-                2: "Ignore Raycast",
-                4: "Water",
-                5: "UI"
-                # Layer 3, and 6-31 are user-defined and not included in this mock data
-            },
-            rendering_layers=[
-                "Default",
-                "Light Layer 1",
-                "Light Layer 2",
-                "Light Layer 3",
-                "Light Layer 4",
-                "Light Layer 5",
-                "Light Layer 6",
-                "Light Layer 7",
-            ],
+            # tags=[
+            #     "Respawn",
+            #     "Finish",
+            #     "EditorOnly",
+            #     "MainCamera",
+            #     "Player",
+            #     "GameController"
+            # ],
+            #
+            # sorting_layers=["Default"],
+            # layers={
+            #     0: "Default",
+            #     1: "TransparentFX",
+            #     2: "Ignore Raycast",
+            #     4: "Water",
+            #     5: "UI"
+            #     # Layer 3, and 6-31 are user-defined and not included in this mock data
+            # },
+            # rendering_layers=[
+            #     "Default",
+            #     "Light Layer 1",
+            #     "Light Layer 2",
+            #     "Light Layer 3",
+            #     "Light Layer 4",
+            #     "Light Layer 5",
+            #     "Light Layer 6",
+            #     "Light Layer 7",
+            # ],
 
             # scenes=[
             #     SceneDeclaration(name="SampleScene")
             # ]
-            scenes=[SceneDeclaration(name=scene.name) for scene in self._scenes]
+            # scenes=[SceneDeclaration(name=scene.name) for scene in self._scenes]
         )
 
         self._log_history = [

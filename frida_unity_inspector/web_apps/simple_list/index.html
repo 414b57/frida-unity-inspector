@@ -203,14 +203,14 @@
                 li.appendChild(valueNode);
                 list.appendChild(li);
             };
-            row("Name", el("b", null, ctx.name));
+            // row("Name", el("b", null, ctx.name));
             row("Version", el("span", null, ctx.version));
             row("Unity Version", el("span", null, ctx.unity_version));
-            row("Tags", pillList(ctx.tags));
-            row("Sorting Layers", pillList(ctx.sorting_layers));
-            row("Layers", pillList(Object.entries(ctx.layers).map(([i, name]) => `${i}: ${name}`)));
-            row("Rendering Layers", pillList(ctx.rendering_layers));
-            row("Declared Scenes", pillList(ctx.scenes.map(s => s.name)));
+            // row("Tags", pillList(ctx.tags));
+            // row("Sorting Layers", pillList(ctx.sorting_layers));
+            // row("Layers", pillList(Object.entries(ctx.layers).map(([i, name]) => `${i}: ${name}`)));
+            // row("Rendering Layers", pillList(ctx.rendering_layers));
+            // row("Declared Scenes", pillList(ctx.scenes.map(s => s.name)));
             container.appendChild(list);
         }
 
