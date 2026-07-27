@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -28,9 +29,11 @@ class UnityEditorWebApp(BaseWebApp):
         super().__init__(datasource, title="Frida Unity Inspector")
 
     @override
+    @asynccontextmanager
     async def _lifespan(self, _app: FastAPI):
         self.hub.bind_loop(asyncio.get_event_loop())
-        super()._lifespan(_app)
+        async with super()._lifespan(_app):
+            yield
 
     def _register_routes(self) -> None:
         # Web page
@@ -51,7 +54,7 @@ class UnityEditorWebApp(BaseWebApp):
 
     # -- REST API ---
     async def status(self) -> dict:
-        return self.datasource.status().model_dump()
+        return (await self.datasource.status()).model_dump()
 
     # TODO
 
@@ -60,7 +63,7 @@ class UnityEditorWebApp(BaseWebApp):
         await self.hub.connect(ws)
         try:
             await ws.send_json(
-                {"type": "status", "status": self.datasource.status().model_dump()}
+                {"type": "status", "status": (await self.datasource.status()).model_dump()}
             )
             for entry in self.datasource.get_log_history():
                 await ws.send_json({"type": "log", "entry": entry.model_dump()})

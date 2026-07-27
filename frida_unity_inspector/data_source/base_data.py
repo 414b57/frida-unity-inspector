@@ -17,15 +17,15 @@ class BaseDataSource(ABC):
 
     # -- lifecycle --
     @abstractmethod
-    def start(self) -> None:
+    async def start(self) -> None:
         """Connect / attach. Safe to call once before serving requests."""
 
     @abstractmethod
-    def stop(self) -> None:
+    async def stop(self) -> None:
         """Detach and release resources."""
 
     @abstractmethod
-    def status(self) -> Status:
+    async def status(self) -> Status:
         """Current attach/connection status."""
 
     @property
@@ -37,30 +37,30 @@ class BaseDataSource(ABC):
 
     # -- reading data --
     @abstractmethod
-    def get_game_context(self) -> GameContext:
+    async def get_game_context(self) -> GameContext:
         """Get static metadata about the inspected Unity game."""
 
     @abstractmethod
-    def get_scenes(self) -> list[SceneDeclaration]:
+    async def get_scenes(self) -> list[SceneDeclaration]:
         """Get the list of scenes known to the game."""
 
     @abstractmethod
-    def get_current_scene(self) -> Scene:
+    async def get_current_scene(self) -> Scene:
         """Get the currently loaded scene and its hierarchy."""
 
     # TODO - Extra methods? I.e. search. etc
 
     # -- writing data --
     @abstractmethod
-    def set_active(self, object_id: str, active: bool) -> None:
+    async def set_active(self, object_id: str, active: bool) -> None:
         """Toggle a GameObject's active state."""
 
     @abstractmethod
-    def set_component_enabled(self, object_id: str, component_id: str, enabled: bool) -> None:
+    async def set_component_enabled(self, object_id: str, component_id: str, enabled: bool) -> None:
         """Toggle a component's enabled state."""
 
     @abstractmethod
-    def set_property(self, object_id: str, component_id: str, label: str, value: Any) -> Property:
+    async def set_property(self, object_id: str, component_id: str, label: str, value: Any) -> Property:
         """Set a component property's value and return the updated property."""
 
     # -- log streaming --
@@ -88,7 +88,7 @@ class BaseDataSource(ABC):
         else:
             self._log_subscribers.remove(callback)
 
-    def emit(self, event: LogEntry) -> None:
+    async def emit(self, event: LogEntry) -> None:
         """Emit a log entry to all subscribers."""
         self._log_history.append(event)
         for callback in self._log_subscribers:

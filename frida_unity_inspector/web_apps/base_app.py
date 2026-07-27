@@ -51,12 +51,12 @@ class BaseWebApp(FastAPI):
     @asynccontextmanager
     async def _lifespan(self, _app: FastAPI):
         unsubscribe = self.datasource.subscribe(self._handle_log)
-        self.datasource.start()
+        await self.datasource.start()
         try:
             yield
         finally:
             unsubscribe()
-            self.datasource.stop()
+            await self.datasource.stop()
 
     @abstractmethod
     def _register_routes(self) -> None:

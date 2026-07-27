@@ -311,15 +311,15 @@ class BasicMockDataSource(BaseDataSource):
         self.logger.info("MockData initialized.")
 
     # -- lifecycle --
-    def start(self) -> None:
+    async def start(self) -> None:
         """Simulate starting the data source."""
         self.logger.info("MockData started.")
 
-    def stop(self) -> None:
+    async def stop(self) -> None:
         """Simulate stopping the data source."""
         self.logger.info("MockData stopped.")
 
-    def status(self) -> Status:
+    async def status(self) -> Status:
         """Return a mock status."""
         return Status(
             running=True,
@@ -327,15 +327,15 @@ class BasicMockDataSource(BaseDataSource):
         )
 
     # -- reading data --
-    def get_game_context(self) -> GameContext:
+    async def get_game_context(self) -> GameContext:
         """Return mock game context data."""
         return self._game_context
 
-    def get_scenes(self) -> list[SceneDeclaration]:
+    async def get_scenes(self) -> list[SceneDeclaration]:
         """Return a list of mock scene declarations."""
         return self._game_context.scenes
 
-    def get_current_scene(self) -> Scene:
+    async def get_current_scene(self) -> Scene:
         """Return a mock current scene with hierarchy."""
         return self._scenes[0]
 
@@ -363,13 +363,13 @@ class BasicMockDataSource(BaseDataSource):
                 return component
         raise KeyError(f"GameObject '{object_id}' has no component with id '{component_id}'.")
 
-    def set_active(self, object_id: str, active: bool) -> None:
+    async def set_active(self, object_id: str, active: bool) -> None:
         """Toggle a GameObject's active state."""
         node = self._find_node(object_id)
         node.data.active = active
         self.logger.info(f"Set active state of {object_id} ({node.name}) to {active}.")
 
-    def set_component_enabled(self, object_id: str, component_id: str, enabled: bool) -> None:
+    async def set_component_enabled(self, object_id: str, component_id: str, enabled: bool) -> None:
         """Toggle a component's enabled state."""
         component = self._find_component(object_id, component_id)
         if component.enabled is None:
@@ -377,7 +377,7 @@ class BasicMockDataSource(BaseDataSource):
         component.enabled = enabled
         self.logger.info(f"Set enabled state of {object_id}/{component_id} ({component.name}) to {enabled}.")
 
-    def set_property(self, object_id: str, component_id: str, label: str, value: Any) -> Property:
+    async def set_property(self, object_id: str, component_id: str, label: str, value: Any) -> Property:
         """Set a component property's value."""
         component = self._find_component(object_id, component_id)
         for index, prop in enumerate(component.properties):

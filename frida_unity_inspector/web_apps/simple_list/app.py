@@ -66,28 +66,28 @@ class SimpleListWebApp(BaseWebApp):
     # -- REST API ---
     # - Read -
     async def status(self) -> dict:
-        return self.datasource.status().model_dump()
+        return (await self.datasource.status()).model_dump()
 
     async def game_context(self) -> dict:
-        return self.datasource.get_game_context().model_dump()
+        return (await self.datasource.get_game_context()).model_dump()
 
     async def scenes(self) -> list[dict]:
-        return [scene.model_dump() for scene in self.datasource.get_scenes()]
+        return [scene.model_dump() for scene in await self.datasource.get_scenes()]
 
     async def current_scene(self) -> dict:
-        return self.datasource.get_current_scene().model_dump()
+        return (await self.datasource.get_current_scene()).model_dump()
 
     # - Write -
     async def set_active(self, request: SetActiveRequest) -> dict:
         try:
-            self.datasource.set_active(request.object_id, request.active)
+            await self.datasource.set_active(request.object_id, request.active)
         except KeyError as e:
             raise HTTPException(status_code=404, detail=str(e))
         return {"ok": True}
 
     async def set_component_enabled(self, request: SetComponentEnabledRequest) -> dict:
         try:
-            self.datasource.set_component_enabled(request.object_id, request.component_id, request.enabled)
+            await self.datasource.set_component_enabled(request.object_id, request.component_id, request.enabled)
         except KeyError as e:
             raise HTTPException(status_code=404, detail=str(e))
         except ValueError as e:
@@ -96,7 +96,7 @@ class SimpleListWebApp(BaseWebApp):
 
     async def set_property(self, request: SetPropertyRequest) -> dict:
         try:
-            updated = self.datasource.set_property(request.object_id, request.component_id, request.label, request.value)
+            updated = await self.datasource.set_property(request.object_id, request.component_id, request.label, request.value)
         except KeyError as e:
             raise HTTPException(status_code=404, detail=str(e))
         except ValueError as e:
