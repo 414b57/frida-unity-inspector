@@ -6,9 +6,6 @@ import frida
 package_name = 'com.PlapPlap.FridaTestingEnv'
 # package_name = 'com.master.triple3d.find'
 
-import os, pathlib
-cwd = pathlib.Path(__file__).parent
-dump_folder = cwd / "dumps"
 
 if not os.path.exists(dump_folder):
     os.makedirs(dump_folder)
