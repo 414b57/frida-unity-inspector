@@ -3,6 +3,8 @@ from .base_data import LogCallback, BaseDataSource
 
 from .basic_mock import BasicMockDataSource
 
+from .frida import FridaDataSource
+
 __all__ = [
     # Models
     "LogType",
@@ -23,5 +25,5 @@ __all__ = [
     # Mock
     "BasicMockDataSource",
     # Frida
-    # TODO
+    "FridaDataSource"
 ]

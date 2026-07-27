@@ -9,7 +9,7 @@ import uvicorn
 
 from .utils.logger import setup_logging, LEVEL_MAP
 
-from .data_source import BaseDataSource, BasicMockDataSource#, FridaData
+from .data_source import BaseDataSource, BasicMockDataSource, FridaDataSource
 from .web_apps import BaseWebApp, UnityEditorWebApp, SimpleListWebApp
 
 log = logging.getLogger("fui.startup")
@@ -76,7 +76,7 @@ def parse_args() -> argparse.Namespace:
 # -- Run --
 def build_data_source(data_source: str) -> BaseDataSource:
     if data_source == "frida":
-        raise NotImplementedError("Frida data sources not yet implemented")
+        return FridaDataSource()
     elif data_source == "basic_mock":
         return BasicMockDataSource()
 
