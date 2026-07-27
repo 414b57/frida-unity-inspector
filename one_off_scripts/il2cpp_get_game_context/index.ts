@@ -7,8 +7,15 @@ function perform() {
         // Unity Version
         console.log("[+] Unity Version: " + Il2Cpp.unityVersion);
 
-        // Get current scene and root objs
         const Core = Il2Cpp.domain.assembly("UnityEngine.CoreModule").image;
+        const RPM  = Core.class("UnityEngine.Rendering.RenderPipelineManager");
+
+        // console.log("[+] RenderPipelineManager: " + RPM);
+        console.log("currentPipeline:", RPM.method("get_currentPipeline").invoke());
+
+
+        // Get current scene and root objs
+        // const Core = Il2Cpp.domain.assembly("UnityEngine.CoreModule").image;
 
         const sceneManager = Core.class("UnityEngine.SceneManagement.SceneManager");
         const getActiveScene = sceneManager.method<Il2Cpp.ValueType>("GetActiveScene");

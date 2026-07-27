@@ -206,6 +206,7 @@
             // row("Name", el("b", null, ctx.name));
             row("Version", el("span", null, ctx.version));
             row("Unity Version", el("span", null, ctx.unity_version));
+            row("Render Pipeline", el("span", null, ctx.render_pipeline || "Built-in"));
             // row("Tags", pillList(ctx.tags));
             // row("Sorting Layers", pillList(ctx.sorting_layers));
             // row("Layers", pillList(Object.entries(ctx.layers).map(([i, name]) => `${i}: ${name}`)));

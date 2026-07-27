@@ -80,6 +80,8 @@ class GameContext(BaseModel):
     version: str
     unity_version: str
 
+    render_pipeline: Optional[str] = None # e.g. "Built-in"(null), "URP", "HDRP", etc. (UnityEngine.Rendering.RenderPipelineManager.get_currentPipeline())
+
     # tags: list[str] = Field(default_factory=list)
     # sorting_layers: list[str] = Field(default_factory=list)
     # layers: list[str] = Field(default_factory=list)
@@ -88,6 +90,8 @@ class GameContext(BaseModel):
 
     # scenes: list[SceneDeclaration] = Field(default_factory=list)
     # Like before, cant figure out how to get this shit.
+
+# TODO - Look into making a "static" context that contains above. Then a "runtime" context that has info can determine via brtue force (i.e. log all tags found in scenes to build taglist, etc)
 
 class SceneDeclaration(BaseModel):
     """A scene that is known to the game, but not necessarily loaded. This should not change."""

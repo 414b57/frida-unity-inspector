@@ -229,6 +229,8 @@ class BasicMockDataSource(BaseDataSource):
             version="1.0.0",
             unity_version="6000.0f1",
 
+            render_pipeline="URP",
+
             # tags=[
             #     "Respawn",
             #     "Finish",
