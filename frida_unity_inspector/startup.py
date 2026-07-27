@@ -74,9 +74,9 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 # -- Run --
-def build_data_source(data_source: str) -> BaseDataSource:
+def build_data_source(data_source: str, device: str | None = None, package: str | None = None, spawn: bool = False) -> BaseDataSource:
     if data_source == "frida":
-        return FridaDataSource()
+        return FridaDataSource(device=device, package=package, spawn=spawn)
     elif data_source == "basic_mock":
         return BasicMockDataSource()
 
@@ -103,7 +103,7 @@ def main():
     if data_source_type == "mock":
         log.warning("NOTICE: Using mock data source, this data is FAKE. And mainly used for testing frontend and backend integration and usability.")
 
-    data_source = build_data_source(data_source_type)
+    data_source = build_data_source(data_source_type, device=args.device, package=args.package, spawn=args.spawn)
     log.info(f"Data source {data_source_type} initialized: {data_source}")
 
     web_app = build_web_app(args.web_app, data_source)
