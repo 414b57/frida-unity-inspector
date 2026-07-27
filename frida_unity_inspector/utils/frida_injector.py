@@ -33,7 +33,7 @@ class FridaInjector:
             agent_script="/path/to/_agent.js",
         )
         await injector.ensure_server()
-        await injector.spawn_and_inject("com.example.app")
+        await injector.inject("com.example.app")
         result = await injector.call("someExport", 1, 2)
         ...
         injector.detach()
