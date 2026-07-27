@@ -17,31 +17,31 @@ class FridaDataSource(BaseDataSource):
         super().__init__()
 
     # -- lifecycle --
-    def start(self) -> None:
+    async def start(self) -> None:
         """TODO"""
 
-    def stop(self) -> None:
+    async def stop(self) -> None:
         """TODO"""
 
-    def status(self) -> Status:
+    async def status(self) -> Status:
         """TODO"""
 
     # -- reading data --
-    def get_game_context(self) -> GameContext:
+    async def get_game_context(self) -> GameContext:
         """TODO"""
 
-    def get_scenes(self) -> list[SceneDeclaration]:
+    async def get_scenes(self) -> list[SceneDeclaration]:
         """TODO"""
 
-    def get_current_scene(self) -> Scene:
+    async def get_current_scene(self) -> Scene:
         """TODO"""
 
     # -- writing data --
-    def set_active(self, object_id: str, active: bool) -> None:
+    async def set_active(self, object_id: str, active: bool) -> None:
         """TODO"""
 
-    def set_component_enabled(self, object_id: str, component_id: str, enabled: bool) -> None:
+    async def set_component_enabled(self, object_id: str, component_id: str, enabled: bool) -> None:
         """TODO"""
 
-    def set_property(self, object_id: str, component_id: str, label: str, value: Any) -> Property:
+    async def set_property(self, object_id: str, component_id: str, label: str, value: Any) -> Property:
         """TODO"""
