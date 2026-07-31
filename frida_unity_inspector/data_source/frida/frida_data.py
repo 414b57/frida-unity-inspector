@@ -44,8 +44,8 @@ class FridaDataSource(BaseDataSource):
         if self.device == "local":
             self.logger.info("Using local device")
             self.frida_device = frida.get_local_device()
-        elif self.device == "usb":
-            self.logger.info("Using USB device/adb")
+        elif self.device == "adb":
+            self.logger.info("Using ADB device discovery")
             devices = await device_discovery.discover_devices()
             if not devices:
                 raise RuntimeError("No devices found via ADB. Please ensure ADB is installed and the device is connected.")
@@ -75,9 +75,13 @@ class FridaDataSource(BaseDataSource):
         if self.frida_device is None:
             raise RuntimeError(f"Failed to get Frida device for {self.device}") # Shouldn't happen, but just in case
 
-        self.adb_device = AdbDevice(self.frida_device.id)
+        is_local = self.device == "local"
+
+        self.adb_device = None if is_local else AdbDevice(self.frida_device.id)
         self.frida_injector = FridaInjector(
             adb=self.adb_device,
+            frida_device=self.frida_device,
+            local=is_local,
             server_file=str(SERVER_FILE_PATH),
             # agent_script="agent/_agent.js",
             agent_script=str(AGENT_FILE_PATH),
@@ -85,10 +89,11 @@ class FridaDataSource(BaseDataSource):
             resume_after_load=True,
             kill_on_stop=False
         )
-        self.logger.trace(f"Frida injector initialized for device {self.frida_device.id}")
+        self.logger.trace(f"Frida injector initialized for device {self.frida_device.id} and package {self.package} (spawn={self.spawn})")
 
-        await self.frida_injector.ensure_server()
-        self.logger.trace(f"Frida server ensured on device {self.frida_device.id}")
+        if not is_local:
+            await self.frida_injector.ensure_server()
+            self.logger.trace(f"Frida server ensured on device {self.frida_device.id}")
         await self.frida_injector.inject(self.package)
         self.logger.trace(f"Frida agent injected/spawned into package {self.package} on device {self.frida_device.id}")
 

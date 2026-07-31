@@ -55,7 +55,7 @@ def parse_args() -> argparse.Namespace:
                                     help="Define where data is gathered from, `basic_mock`/`complex_mock` for test data | `frida` for real data")
 
     device_group = p.add_argument_group(title="Device")
-    device_group.add_argument("--device", default=os.environ.get("FUI_DEVICE", "local"), help="frida device: local | usb | <device-id> (default: %(default)s)")
+    device_group.add_argument("--device", default=os.environ.get("FUI_DEVICE", "adb"), help="frida device: local | adb | <device-id> (default: %(default)s)")
     device_group.add_argument("--package", default=os.environ.get("FUI_PACKAGE"), help="package to attach to")
     device_group.add_argument("--spawn", action="store_true", default=parse_bool(os.environ.get("FUI_SPAWN", "false")), help="spawn the target instead of attaching to a running one")
 

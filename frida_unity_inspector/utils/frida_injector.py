@@ -5,6 +5,7 @@ import asyncio
 import hashlib
 import logging
 import pathlib
+import os
 
 import frida
 
@@ -38,9 +39,11 @@ class FridaInjector:
         ...
         injector.detach()
 
-    :param adb: An Adb instance bound to the target device.
-    :param server_file: Local path to the frida-server binary to upload.
+    :param adb: An Adb instance bound to the target device. May be None for a local (PC) device, where ADB is not used.
+    :param server_file: Local path to the frida-server binary to upload. Not required for a local device (frida injects into local processes directly).
     :param agent_script: Path to the agent .js to inject.
+    :param frida_device: An already-resolved frida device to reuse. If None, the injector will resolve the device automatically.
+    :param local: Target the local machine (this PC) rather than a remote device. Skips ADB/frida-server entirely and matches targets by process name.
     :param spawn: Whether the default inject flow spawns (True) or attaches (False).
     :param resume_after_load: In spawn mode, resume the process after the agent loads.
     :param kill_on_stop: Kill the target process on detach().
@@ -50,17 +53,21 @@ class FridaInjector:
 
     def __init__(
         self,
-        adb: AdbDevice,
-        server_file: str,
+        adb: Optional[AdbDevice],
+        server_file: Optional[str],
         agent_script: str,
+        frida_device: Optional[frida.core.Device] = None,
+        local: bool = False,
         spawn: bool = False,
         resume_after_load: bool = True,
         kill_on_stop: bool = True,
         load_timeout: float = 30.0,
         remote_name: Optional[str] = None,
     ) -> None:
-        if not server_file:
-            raise ValueError("server_file must be a non-empty path")
+        if not local and not server_file:
+            raise ValueError("server_file must be a non-empty path for a remote device")
+        if not local and adb is None:
+            raise ValueError("adb is required for a remote device")
         if not agent_script:
             raise ValueError("agent_script must be a non-empty path")
         if load_timeout <= 0:
@@ -69,15 +76,16 @@ class FridaInjector:
         self._adb = adb
         self._server_file = server_file
         self._agent_script = agent_script
+        self._local = local
         self._spawn = spawn
         self._resume_after_load = resume_after_load
         self._kill_on_stop = kill_on_stop
         self._load_timeout = load_timeout
-        self._remote_name = remote_name or pathlib.Path(server_file).name
+        self._remote_name = remote_name or (pathlib.Path(server_file).name if server_file else None)
 
         # runtime
         self._loop: asyncio.AbstractEventLoop | None = None
-        self._frida_device: frida.core.Device | None = None
+        self._frida_device: frida.core.Device | None = frida_device
         self._session: frida.core.Session | None = None
         self._script: frida.core.Script | None = None
         self._pid: int | None = None
@@ -119,21 +127,38 @@ class FridaInjector:
 
     # Frida device
     async def _get_frida_device(self) -> Optional[frida.core.Device]:
+        if self._frida_device is not None:
+            return self._frida_device
         try:
-            frida_device = frida.get_device(self._adb.serial)
-            logger.debug("Frida device obtained for device %s.", self._adb.serial)
+            if self._local:
+                frida_device = frida.get_local_device()
+                logger.debug("Local frida device obtained.")
+            else:
+                frida_device = frida.get_device(self._adb.serial)
+                logger.debug("Frida device obtained for device %s.", self._adb.serial)
             return frida_device
         except Exception as e:
-            logger.error("Failed to get frida device for device %s. Error: %s", self._adb.serial, e)
+            serial = "local" if self._local else self._adb.serial
+            logger.error("Failed to get frida device for device %s. Error: %s", serial, e)
             return None
 
     def _find_specific_process(self, package_name: str, startswith_valid: bool = False) -> Optional[frida.core.Process]:
         try:
-            apps = self._frida_device.enumerate_applications()
-            for app in apps:
-                if app.identifier == package_name or (startswith_valid and app.identifier.startswith(package_name)):
-                    logger.spam("Found matching application: %s (PID: %s) for package '%s'", app.identifier, app.pid, package_name)
-                    return app
+            # On windows, have to go over process, and hope find it.
+            if self._local:
+                # target is either `app.exe` or `/path/to/app.exe` or `app` (without .exe) - so need to normalize it first
+                target = os.path.basename(package_name).lower()
+                for process in self._frida_device.enumerate_processes():
+                    process_name = process.name.lower()
+                    if process_name == target or process_name == (target + ".exe") or (startswith_valid and process_name.startswith(target)):
+                        logger.spam("Found matching process: %s (PID: %s) for target '%s'", process.name, process.pid, package_name)
+                        return process
+            else:
+                # On Android, can match by identifier, so easier to find.
+                for app in self._frida_device.enumerate_applications():
+                    if app.identifier == package_name or (startswith_valid and app.identifier.startswith(package_name)):
+                        logger.spam("Found matching application: %s (PID: %s) for package '%s'", app.identifier, app.pid, package_name)
+                        return app
             return None
         except Exception as e:
             logger.error("Error while enumerating processes: %s", e)
@@ -212,7 +237,13 @@ class FridaInjector:
             return False
 
     async def ensure_server(self) -> bool:
-        """Upload (if needed), chmod, and start the frida server. Returns True on success."""
+        """
+        For a remote device, ensures the frida-server binary is present, is correct/uncorrupted, has the right permissions, and is running.
+        For a local device, this is a no-op and returns True.
+        """
+        if self._local:
+            logger.debug("Local device: skipping frida-server upload/start.")
+            return True
         return (
             await self._ensure_frida_server_uploaded()
             and await self._ensure_frida_server_permissions()
