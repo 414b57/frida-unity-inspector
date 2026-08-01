@@ -32,16 +32,23 @@ class FridaDataSource(BaseDataSource):
         self.spawn = spawn
         self.kill_on_stop = kill_on_stop
 
-        # runtime
+        # runtime - handlers
         self.adb_device: AdbDevice | None = None
         self.frida_device: frida.Device | None = None
         self.frida_injector: FridaInjector | None = None
+
+        # runtime - state
+        self._running = False
+        self._agent_loaded = False
+        self._agent_ready = False
 
     # -- lifecycle --
     async def start(self) -> None:
         """
         TODO
         """
+        self.logger.info("Starting FridaDataSource...")
+        self._running = True
         if self.device == "local":
             self.logger.info("Using local device")
             self.frida_device = frida.get_local_device()
@@ -92,16 +99,21 @@ class FridaDataSource(BaseDataSource):
         )
         self.logger.trace(f"Frida injector initialized for device {self.frida_device.id} and package {self.package} (spawn={self.spawn})")
 
+        self.frida_injector.register_on_message_callback(self.on_message)
+
         if not is_local:
             await self.frida_injector.ensure_server()
             self.logger.trace(f"Frida server ensured on device {self.frida_device.id}")
         await self.frida_injector.inject(self.package)
         self.logger.trace(f"Frida agent injected/spawned into package {self.package} on device {self.frida_device.id}")
 
+        # Start the run loop
+        asyncio.create_task(self._run())
 
     async def stop(self) -> None:
         """TODO"""
         self.logger.info("Stopping FridaDataSource...")
+        self._running = False
         if self.frida_injector:
             self.frida_injector.detach()
             self.logger.info("Frida injector stopped.")
@@ -109,6 +121,87 @@ class FridaDataSource(BaseDataSource):
 
     async def status(self) -> Status:
         """TODO"""
+
+    # Run
+    async def _run(self) -> None:
+        """TODO"""
+        self.logger.info("FridaDataSource run loop started.")
+        while self._running:
+            await asyncio.sleep(1)
+            if not self._agent_ready:
+                continue  # Wait until the agent is ready before processing messages
+
+            response = await self.frida_injector.call("test", "test_msg")
+            self.logger.trace(f"Test call response: {response}")
+
+    # Message Handling
+    def on_message(self, message: dict[str, Any], data: bytes | None) -> None:
+        """Handle messages from the Frida agent."""
+        self.logger.trace(f"Received message from Frida agent: {message}, data length: {len(data) if data else 0}")
+        # TODO - Handle messages and update internal state as needed
+        msg_type = message.get("type", None)
+        if msg_type is None:
+            self.logger.warning("Received message without 'type' field from Frida agent.")
+            self.logger.debug(f"Message: {message} ||| Data: {data}")
+            return
+        elif msg_type == "send":
+            self._handle_message_sent(message, data)
+        else:
+            self.logger.warning(f"Received message with unrecognized type '{msg_type}' from Frida agent.")
+            self.logger.debug(f"Message: {message} ||| Data: {data}")
+
+    def _handle_message_sent(self, message: dict[str, Any], data: bytes | None) -> None:
+        """Handle 'send' messages from the Frida agent."""
+        payload = message.get("payload", None)
+        if payload is None:
+            self.logger.warning("Received 'send' message without 'payload' field from Frida agent.")
+            self.logger.debug(f"Message: {message} ||| Data: {data}")
+            return
+        message_type = payload.get("type", None)
+        if message_type is None:
+            self.logger.warning("Received 'send' message without 'type' field from Frida agent.")
+            self.logger.debug(f"Message: {message} ||| Data: {data}")
+            return
+        if message_type == "event":
+            event = payload.get("event", None)
+            event_data = payload.get("data", None)
+            if event is None:
+                self.logger.warning("Received 'send' message of type 'event' without 'event' field from Frida agent.")
+                self.logger.debug(f"Message: {message} ||| Data: {data}")
+                return
+            self._handle_event(event, event_data, data)
+        else:
+            self.logger.warning(f"Received 'send' message with unrecognized type '{message_type}' from Frida agent.")
+            self.logger.debug(f"Message: {message} ||| Data: {data}")
+
+    def _handle_event(self, event: str, event_data: Any, data: bytes | None) -> None:
+        """Handle events sent from the Frida agent."""
+        self.logger.trace(f"Handling event '{event}' with data: {event_data}")
+        events = {
+            "agent_loaded": self._handle_agent_loaded,
+            "agent_ready": self._handle_agent_ready,
+            # Add more event handlers here as needed
+        }
+        if event in events:
+            events[event]()
+        else:
+            self._handle_unknown_event(event, event_data, data)
+
+    # Event Handlers
+    def _handle_unknown_event(self, event: str, event_data: Any, data: bytes | None) -> None:
+        """Handle unknown events sent from the Frida agent."""
+        self.logger.warning(f"Received unknown event '{event}' from Frida agent.")
+        self.logger.debug(f"Event data: {event_data} ||| Data: {data}")
+
+    def _handle_agent_loaded(self) -> None:
+        """Handle the event when the Frida agent has been loaded."""
+        self._agent_loaded = True
+        self.logger.info("Frida agent loaded successfully.")
+
+    def _handle_agent_ready(self) -> None:
+        """Handle the event when the Frida agent is ready to receive commands."""
+        self._agent_ready = True
+        self.logger.info("Frida agent is ready.")
 
     # -- reading data --
     async def get_game_context(self) -> GameContext:
