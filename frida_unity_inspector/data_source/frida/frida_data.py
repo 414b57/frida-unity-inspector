@@ -24,12 +24,13 @@ class FridaDataSource(BaseDataSource):
 
 
     """
-    def __init__(self, device: str, package: str, spawn: bool) -> None:
+    def __init__(self, device: str, package: str, spawn: bool, kill_on_stop: bool) -> None:
         super().__init__()
         # args
         self.device = device
         self.package = package
         self.spawn = spawn
+        self.kill_on_stop = kill_on_stop
 
         # runtime
         self.adb_device: AdbDevice | None = None
@@ -87,7 +88,7 @@ class FridaDataSource(BaseDataSource):
             agent_script=str(AGENT_FILE_PATH),
             spawn=self.spawn,
             resume_after_load=True,
-            kill_on_stop=False
+            kill_on_stop=True
         )
         self.logger.trace(f"Frida injector initialized for device {self.frida_device.id} and package {self.package} (spawn={self.spawn})")
 

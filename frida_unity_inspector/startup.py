@@ -58,6 +58,7 @@ def parse_args() -> argparse.Namespace:
     device_group.add_argument("--device", default=os.environ.get("FUI_DEVICE", "adb"), help="frida device: local | adb | <device-id> (default: %(default)s)")
     device_group.add_argument("--package", default=os.environ.get("FUI_PACKAGE"), help="package to attach to")
     device_group.add_argument("--spawn", action="store_true", default=parse_bool(os.environ.get("FUI_SPAWN", "false")), help="spawn the target instead of attaching to a running one")
+    device_group.add_argument("--kill-on-stop", action="store_true", default=parse_bool(os.environ.get("FUI_KILL_ON_STOP", "false")), help="kill the target when stopping the inspector")
 
     hosting_group = p.add_argument_group(title="Web Hosting")
     hosting_group.add_argument("--host", default=os.environ.get("FUI_HOST", "127.0.0.1"), help="Address to bind the web server to (default: %(default)s)")
@@ -74,9 +75,9 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 # -- Run --
-def build_data_source(data_source: str, device: str | None = None, package: str | None = None, spawn: bool = False) -> BaseDataSource:
+def build_data_source(data_source: str, device: str | None = None, package: str | None = None, spawn: bool = False, kill_on_stop: bool = False) -> BaseDataSource:
     if data_source == "frida":
-        return FridaDataSource(device=device, package=package, spawn=spawn)
+        return FridaDataSource(device=device, package=package, spawn=spawn, kill_on_stop=kill_on_stop)
     elif data_source == "basic_mock":
         return BasicMockDataSource()
 
@@ -103,7 +104,7 @@ def main():
     if data_source_type == "mock":
         log.warning("NOTICE: Using mock data source, this data is FAKE. And mainly used for testing frontend and backend integration and usability.")
 
-    data_source = build_data_source(data_source_type, device=args.device, package=args.package, spawn=args.spawn)
+    data_source = build_data_source(data_source_type, device=args.device, package=args.package, spawn=args.spawn, kill_on_stop=args.kill_on_stop)
     log.info(f"Data source {data_source_type} initialized: {data_source}")
 
     web_app = build_web_app(args.web_app, data_source)
