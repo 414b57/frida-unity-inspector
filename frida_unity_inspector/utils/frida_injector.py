@@ -471,11 +471,11 @@ class FridaInjector:
         logger.god_save_you("Calling %d callbacks for frida message.", len(self._on_message_callbacks))
         for callback in self._on_message_callbacks:
             try:
-                self.logger.trace(f"Invoking callback {callback} for message")
+                logger.trace(f"Invoking callback {callback} for message")
                 result = callback(message, data)
                 if asyncio.iscoroutine(result):
                     await result
-                self.logger.spam(f"Callback {callback} completed for message")
+                logger.spam(f"Callback {callback} completed for message")
             except Exception as e:
                 logger.error("Error in frida message callback: %s", e)
 
