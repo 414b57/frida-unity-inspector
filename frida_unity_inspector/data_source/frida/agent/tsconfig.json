@@ -9,6 +9,6 @@
     "types": ["frida-gum"]
   },
   "include": [
-    "index.ts"
+    "**/*.ts"
   ]
 }

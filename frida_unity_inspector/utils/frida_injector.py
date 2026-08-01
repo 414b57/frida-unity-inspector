@@ -357,10 +357,16 @@ class FridaInjector:
             logger.verbose("Frida script is not loaded. Cannot call method.")
             return None
         try:
-            fn = getattr(self._script.exports_async, method, None)
-            if fn is None:
-                raise AttributeError(f"Method '{method}' not found in frida script exports.")
-            result = await fn(*args)
+            camel = frida.core._to_camel_case(method)
+            exports = await self._script.list_exports_async()
+            if method in exports:
+                js_name = method
+            elif camel in exports:
+                js_name = camel
+            else:
+                raise AttributeError(f"Method '{method}' not found in frida script exports. Available: {', '.join(exports)}")
+            request, data = frida.core.make_rpc_call_request(js_name, args)
+            result = await self._script._rpc_request_async(request, data)
             logger.spam("Called method '%s' on frida script with args %s. Result: %s", method, args, result)
             return result
         except Exception as e:

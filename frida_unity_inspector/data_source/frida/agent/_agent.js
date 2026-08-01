@@ -89,8 +89,8 @@
     getter(Il2Cpp3, "unityVersionIsBelow202120", () => {
       return UnityVersion.lt(Il2Cpp3.unityVersion, "2021.2.0");
     }, lazy);
-    function unityEngineCall(method) {
-      const handle = Il2Cpp3.exports.resolveInternalCall(Memory.allocUtf8String("UnityEngine.Application::" + method));
+    function unityEngineCall(method2) {
+      const handle = Il2Cpp3.exports.resolveInternalCall(Memory.allocUtf8String("UnityEngine.Application::" + method2));
       const nativeFunction = new NativeFunction(handle, "pointer", []);
       return nativeFunction.isNull() ? null : new Il2Cpp3.String(nativeFunction()).asNullable()?.content ?? null;
     }
@@ -134,10 +134,10 @@
       createDirectoryRecursively(path);
       const destination = `${path}/${fileName}`;
       const file = new File(destination, "w");
-      for (const assembly of Il2Cpp3.domain.assemblies) {
-        inform(`dumping ${assembly.name}...`);
-        for (const klass of assembly.image.classes) {
-          file.write(`${klass}
+      for (const assembly2 of Il2Cpp3.domain.assemblies) {
+        inform(`dumping ${assembly2.name}...`);
+        for (const klass2 of assembly2.image.classes) {
+          file.write(`${klass2}
 
 `);
         }
@@ -153,13 +153,13 @@
       if (!ignoreAlreadyExistingDirectory && directoryExists(path)) {
         raise(`directory ${path} already exists - pass ignoreAlreadyExistingDirectory = true to skip this check`);
       }
-      for (const assembly of Il2Cpp3.domain.assemblies) {
-        inform(`dumping ${assembly.name}...`);
-        const destination = `${path}/${assembly.name.replaceAll(".", "/")}.cs`;
+      for (const assembly2 of Il2Cpp3.domain.assemblies) {
+        inform(`dumping ${assembly2.name}...`);
+        const destination = `${path}/${assembly2.name.replaceAll(".", "/")}.cs`;
         createDirectoryRecursively(destination.substring(0, destination.lastIndexOf("/")));
         const file = new File(destination, "w");
-        for (const klass of assembly.image.classes) {
-          file.write(`${klass}
+        for (const klass2 of assembly2.image.classes) {
+          file.write(`${klass2}
 
 `);
         }
@@ -588,22 +588,22 @@
   })(Il2Cpp2 || (Il2Cpp2 = {}));
   var Il2Cpp2;
   (function(Il2Cpp3) {
-    function is(klass) {
+    function is(klass2) {
       return (element) => {
         if (element instanceof Il2Cpp3.Class) {
-          return klass.isAssignableFrom(element);
+          return klass2.isAssignableFrom(element);
         } else {
-          return klass.isAssignableFrom(element.class);
+          return klass2.isAssignableFrom(element.class);
         }
       };
     }
     Il2Cpp3.is = is;
-    function isExactly(klass) {
+    function isExactly(klass2) {
       return (element) => {
         if (element instanceof Il2Cpp3.Class) {
-          return element.equals(klass);
+          return element.equals(klass2);
         } else {
-          return element.class.equals(klass);
+          return element.class.equals(klass2);
         }
       };
     }
@@ -661,7 +661,7 @@
        * Returns the heap allocated objects of the specified class. \
        * This variant reads GC descriptors.
        */
-      choose(klass) {
+      choose(klass2) {
         const matches = [];
         const callback = (objects, size) => {
           for (let i = 0; i < size; i++) {
@@ -672,7 +672,7 @@
         if (Il2Cpp3.unityVersionIsBelow202120) {
           const onWorld = new NativeCallback(() => {
           }, "void", []);
-          const state = Il2Cpp3.exports.livenessCalculationBegin(klass, 0, chooseCallback, NULL, onWorld, onWorld);
+          const state = Il2Cpp3.exports.livenessCalculationBegin(klass2, 0, chooseCallback, NULL, onWorld, onWorld);
           Il2Cpp3.exports.livenessCalculationFromStatics(state);
           Il2Cpp3.exports.livenessCalculationEnd(state);
         } else {
@@ -686,7 +686,7 @@
           };
           const reallocCallback = new NativeCallback(realloc, "pointer", ["pointer", "size_t", "pointer"]);
           this.stopWorld();
-          const state = Il2Cpp3.exports.livenessAllocateStruct(klass, 0, chooseCallback, NULL, reallocCallback);
+          const state = Il2Cpp3.exports.livenessAllocateStruct(klass2, 0, chooseCallback, NULL, reallocCallback);
           Il2Cpp3.exports.livenessCalculationFromStatics(state);
           Il2Cpp3.exports.livenessFinalize(state);
           this.startWorld();
@@ -1117,8 +1117,8 @@
   })(Il2Cpp2 || (Il2Cpp2 = {}));
   var Il2Cpp2;
   (function(Il2Cpp3) {
-    function nullable(valueOrNull, klass) {
-      const actualClass = typeof valueOrNull == "boolean" ? Il2Cpp3.corlib.class("System.Boolean") : typeof valueOrNull == "number" ? klass ?? Il2Cpp3.corlib.class("System.Int32") : valueOrNull instanceof Int64 ? Il2Cpp3.corlib.class("System.Int64") : valueOrNull instanceof UInt64 ? Il2Cpp3.corlib.class("System.UInt64") : valueOrNull instanceof NativePointer ? klass ?? Il2Cpp3.corlib.class("System.IntPtr") : valueOrNull instanceof Il2Cpp3.ValueType ? valueOrNull.type.class : klass ?? raise(`A class must be specified when constructing a nullable for value '${valueOrNull}'`);
+    function nullable(valueOrNull, klass2) {
+      const actualClass = typeof valueOrNull == "boolean" ? Il2Cpp3.corlib.class("System.Boolean") : typeof valueOrNull == "number" ? klass2 ?? Il2Cpp3.corlib.class("System.Int32") : valueOrNull instanceof Int64 ? Il2Cpp3.corlib.class("System.Int64") : valueOrNull instanceof UInt64 ? Il2Cpp3.corlib.class("System.UInt64") : valueOrNull instanceof NativePointer ? klass2 ?? Il2Cpp3.corlib.class("System.IntPtr") : valueOrNull instanceof Il2Cpp3.ValueType ? valueOrNull.type.class : klass2 ?? raise(`A class must be specified when constructing a nullable for value '${valueOrNull}'`);
       if (actualClass.isValueType == false) {
         raise(`Cannot create nullable value type out of a reference type '${actualClass.type.name}'`);
       }
@@ -1134,12 +1134,12 @@
   })(Il2Cpp2 || (Il2Cpp2 = {}));
   var Il2Cpp2;
   (function(Il2Cpp3) {
-    async function perform2(block, flag = "bind") {
+    async function perform(block, flag = "bind") {
       let attachedThread = null;
       try {
         const isInMainThread = await Il2Cpp3.initialize(flag == "main");
         if (flag == "main" && !isInMainThread) {
-          return perform2(() => Il2Cpp3.mainThread.schedule(block), "free");
+          return perform(() => Il2Cpp3.mainThread.schedule(block), "free");
         }
         if (Il2Cpp3.currentThread == null) {
           attachedThread = Il2Cpp3.domain.attach();
@@ -1160,7 +1160,7 @@
         }
       }
     }
-    Il2Cpp3.perform = perform2;
+    Il2Cpp3.perform = perform;
   })(Il2Cpp2 || (Il2Cpp2 = {}));
   var Il2Cpp2;
   (function(Il2Cpp3) {
@@ -1267,53 +1267,53 @@ ${this.#state.buffer.join("\n")}
       }
       /** Commits the current changes by finding the target methods. */
       and() {
-        const filterMethod = (method) => {
+        const filterMethod = (method2) => {
           if (this.#parameterFilter == void 0) {
-            this.#targets.push(method);
+            this.#targets.push(method2);
             return;
           }
-          for (const parameter of method.parameters) {
+          for (const parameter of method2.parameters) {
             if (this.#parameterFilter(parameter)) {
-              this.#targets.push(method);
+              this.#targets.push(method2);
               break;
             }
           }
         };
         const filterMethods = (values) => {
-          for (const method of values) {
-            filterMethod(method);
+          for (const method2 of values) {
+            filterMethod(method2);
           }
         };
-        const filterClass = (klass) => {
+        const filterClass = (klass2) => {
           if (this.#methodFilter == void 0) {
-            filterMethods(klass.methods);
+            filterMethods(klass2.methods);
             return;
           }
-          for (const method of klass.methods) {
-            if (this.#methodFilter(method)) {
-              filterMethod(method);
+          for (const method2 of klass2.methods) {
+            if (this.#methodFilter(method2)) {
+              filterMethod(method2);
             }
           }
         };
         const filterClasses = (values) => {
-          for (const klass of values) {
-            filterClass(klass);
+          for (const klass2 of values) {
+            filterClass(klass2);
           }
         };
-        const filterAssembly = (assembly) => {
+        const filterAssembly = (assembly2) => {
           if (this.#classFilter == void 0) {
-            filterClasses(assembly.image.classes);
+            filterClasses(assembly2.image.classes);
             return;
           }
-          for (const klass of assembly.image.classes) {
-            if (this.#classFilter(klass)) {
-              filterClass(klass);
+          for (const klass2 of assembly2.image.classes) {
+            if (this.#classFilter(klass2)) {
+              filterClass(klass2);
             }
           }
         };
         const filterAssemblies = (assemblies) => {
-          for (const assembly of assemblies) {
-            filterAssembly(assembly);
+          for (const assembly2 of assemblies) {
+            filterAssembly(assembly2);
           }
         };
         const filterDomain = (domain) => {
@@ -1321,9 +1321,9 @@ ${this.#state.buffer.join("\n")}
             filterAssemblies(domain.assemblies);
             return;
           }
-          for (const assembly of domain.assemblies) {
-            if (this.#assemblyFilter(assembly)) {
-              filterAssembly(assembly);
+          for (const assembly2 of domain.assemblies) {
+            if (this.#assemblyFilter(assembly2)) {
+              filterAssembly(assembly2);
             }
           }
         };
@@ -1358,41 +1358,41 @@ ${this.#state.buffer.join("\n")}
     }
     Il2Cpp3.Tracer = Tracer;
     function trace(parameters = false) {
-      const applier = () => (method, state, threadId) => {
-        const paddedVirtualAddress = method.relativeVirtualAddress.toString(16).padStart(8, "0");
-        Interceptor.attach(method.virtualAddress, {
+      const applier = () => (method2, state, threadId) => {
+        const paddedVirtualAddress = method2.relativeVirtualAddress.toString(16).padStart(8, "0");
+        Interceptor.attach(method2.virtualAddress, {
           onEnter() {
             if (this.threadId == threadId) {
-              state.buffer.push(`\x1B[2m0x${paddedVirtualAddress}\x1B[0m ${`\u2502 `.repeat(state.depth++)}\u250C\u2500\x1B[35m${method.class.type.name}::\x1B[1m${method.name}\x1B[0m\x1B[0m`);
+              state.buffer.push(`\x1B[2m0x${paddedVirtualAddress}\x1B[0m ${`\u2502 `.repeat(state.depth++)}\u250C\u2500\x1B[35m${method2.class.type.name}::\x1B[1m${method2.name}\x1B[0m\x1B[0m`);
             }
           },
           onLeave() {
             if (this.threadId == threadId) {
-              state.buffer.push(`\x1B[2m0x${paddedVirtualAddress}\x1B[0m ${`\u2502 `.repeat(--state.depth)}\u2514\u2500\x1B[33m${method.class.type.name}::\x1B[1m${method.name}\x1B[0m\x1B[0m`);
+              state.buffer.push(`\x1B[2m0x${paddedVirtualAddress}\x1B[0m ${`\u2502 `.repeat(--state.depth)}\u2514\u2500\x1B[33m${method2.class.type.name}::\x1B[1m${method2.name}\x1B[0m\x1B[0m`);
               state.flush();
             }
           }
         });
       };
-      const applierWithParameters = () => (method, state, threadId) => {
-        const paddedVirtualAddress = method.relativeVirtualAddress.toString(16).padStart(8, "0");
-        const startIndex = +!method.isStatic | +Il2Cpp3.unityVersionIsBelow201830;
+      const applierWithParameters = () => (method2, state, threadId) => {
+        const paddedVirtualAddress = method2.relativeVirtualAddress.toString(16).padStart(8, "0");
+        const startIndex = +!method2.isStatic | +Il2Cpp3.unityVersionIsBelow201830;
         const callback = function(...args) {
           if (this.threadId == threadId) {
-            const thisParameter = method.isStatic ? void 0 : new Il2Cpp3.Parameter("this", -1, method.class.type);
-            const parameters2 = thisParameter ? [thisParameter].concat(method.parameters) : method.parameters;
-            state.buffer.push(`\x1B[2m0x${paddedVirtualAddress}\x1B[0m ${`\u2502 `.repeat(state.depth++)}\u250C\u2500\x1B[35m${method.class.type.name}::\x1B[1m${method.name}\x1B[0m\x1B[0m(${parameters2.map((e) => `\x1B[32m${e.name}\x1B[0m = \x1B[31m${Il2Cpp3.fromFridaValue(args[e.position + startIndex], e.type)}\x1B[0m`).join(", ")})`);
+            const thisParameter = method2.isStatic ? void 0 : new Il2Cpp3.Parameter("this", -1, method2.class.type);
+            const parameters2 = thisParameter ? [thisParameter].concat(method2.parameters) : method2.parameters;
+            state.buffer.push(`\x1B[2m0x${paddedVirtualAddress}\x1B[0m ${`\u2502 `.repeat(state.depth++)}\u250C\u2500\x1B[35m${method2.class.type.name}::\x1B[1m${method2.name}\x1B[0m\x1B[0m(${parameters2.map((e) => `\x1B[32m${e.name}\x1B[0m = \x1B[31m${Il2Cpp3.fromFridaValue(args[e.position + startIndex], e.type)}\x1B[0m`).join(", ")})`);
           }
-          const returnValue = method.nativeFunction(...args);
+          const returnValue = method2.nativeFunction(...args);
           if (this.threadId == threadId) {
-            state.buffer.push(`\x1B[2m0x${paddedVirtualAddress}\x1B[0m ${`\u2502 `.repeat(--state.depth)}\u2514\u2500\x1B[33m${method.class.type.name}::\x1B[1m${method.name}\x1B[0m\x1B[0m${returnValue == void 0 ? "" : ` = \x1B[36m${Il2Cpp3.fromFridaValue(returnValue, method.returnType)}`}\x1B[0m`);
+            state.buffer.push(`\x1B[2m0x${paddedVirtualAddress}\x1B[0m ${`\u2502 `.repeat(--state.depth)}\u2514\u2500\x1B[33m${method2.class.type.name}::\x1B[1m${method2.name}\x1B[0m\x1B[0m${returnValue == void 0 ? "" : ` = \x1B[36m${Il2Cpp3.fromFridaValue(returnValue, method2.returnType)}`}\x1B[0m`);
             state.flush();
           }
           return returnValue;
         };
-        method.revert();
-        const nativeCallback = new NativeCallback(callback, method.returnType.fridaAlias, method.fridaSignature);
-        Interceptor.replace(method.virtualAddress, nativeCallback);
+        method2.revert();
+        const nativeCallback = new NativeCallback(callback, method2.returnType.fridaAlias, method2.fridaSignature);
+        Interceptor.replace(method2.virtualAddress, nativeCallback);
       };
       return new Il2Cpp3.Tracer(parameters ? applierWithParameters() : applier());
     }
@@ -1415,18 +1415,18 @@ ${this.#state.buffer.join("\n")}
         }
         return methods[right];
       };
-      const applier = () => (method, state, threadId) => {
-        Interceptor.attach(method.virtualAddress, function() {
+      const applier = () => (method2, state, threadId) => {
+        Interceptor.attach(method2.virtualAddress, function() {
           if (this.threadId == threadId) {
             const handles = globalThis.Thread.backtrace(this.context, mode);
-            handles.unshift(method.virtualAddress);
+            handles.unshift(method2.virtualAddress);
             for (const handle of handles) {
               if (handle.compare(Il2Cpp3.module.base) > 0 && handle.compare(Il2Cpp3.module.base.add(Il2Cpp3.module.size)) < 0) {
-                const method2 = searchInsert(handle);
-                if (method2) {
-                  const offset = handle.sub(method2.virtualAddress);
+                const method3 = searchInsert(handle);
+                if (method3) {
+                  const offset = handle.sub(method3.virtualAddress);
                   if (offset.compare(4095) < 0) {
-                    state.buffer.push(`\x1B[2m0x${method2.relativeVirtualAddress.toString(16).padStart(8, "0")}\x1B[0m\x1B[2m+0x${offset.toString(16).padStart(3, `0`)}\x1B[0m ${method2.class.type.name}::\x1B[1m${method2.name}\x1B[0m`);
+                    state.buffer.push(`\x1B[2m0x${method3.relativeVirtualAddress.toString(16).padStart(8, "0")}\x1B[0m\x1B[2m+0x${offset.toString(16).padStart(3, `0`)}\x1B[0m ${method3.class.type.name}::\x1B[1m${method3.name}\x1B[0m`);
                   }
                 }
               }
@@ -1512,9 +1512,9 @@ ${this.#state.buffer.join("\n")}
       lazy
     ], Array2, "headerSize", null);
     Il2Cpp3.Array = Array2;
-    function array(klass, lengthOrElements) {
+    function array(klass2, lengthOrElements) {
       const length = typeof lengthOrElements == "number" ? lengthOrElements : lengthOrElements.length;
-      const array2 = new Il2Cpp3.Array(Il2Cpp3.exports.arrayNew(klass, length));
+      const array2 = new Il2Cpp3.Array(Il2Cpp3.exports.arrayNew(klass2, length));
       if (globalThis.Array.isArray(lengthOrElements)) {
         array2.elements.write(lengthOrElements);
       }
@@ -1608,8 +1608,8 @@ ${this.#state.buffer.join("\n")}
       }
       /** Gets the generic class of the current class if the current class is inflated. */
       get genericClass() {
-        const klass = this.image.tryClass(this.fullName)?.asNullable();
-        return klass?.equals(this) ? null : klass ?? null;
+        const klass2 = this.image.tryClass(this.fullName)?.asNullable();
+        return klass2?.equals(this) ? null : klass2 ?? null;
       }
       /** Gets the generics parameters of this generic class. */
       get generics() {
@@ -1735,10 +1735,10 @@ ${this.#state.buffer.join("\n")}
       }
       /** Gets the hierarchy of the current class. */
       *hierarchy(options) {
-        let klass = options?.includeCurrent ?? true ? this : this.parent;
-        while (klass) {
-          yield klass;
-          klass = klass.parent;
+        let klass2 = options?.includeCurrent ?? true ? this : this.parent;
+        while (klass2) {
+          yield klass2;
+          klass2 = klass2.parent;
         }
       }
       /** Builds a generic instance of the current generic class. */
@@ -1919,18 +1919,18 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
   })(Il2Cpp2 || (Il2Cpp2 = {}));
   var Il2Cpp2;
   (function(Il2Cpp3) {
-    function delegate(klass, block) {
+    function delegate(klass2, block) {
       const SystemDelegate = Il2Cpp3.corlib.class("System.Delegate");
       const SystemMulticastDelegate = Il2Cpp3.corlib.class("System.MulticastDelegate");
-      if (!SystemDelegate.isAssignableFrom(klass)) {
-        raise(`cannot create a delegate for ${klass.type.name} as it's a non-delegate class`);
+      if (!SystemDelegate.isAssignableFrom(klass2)) {
+        raise(`cannot create a delegate for ${klass2.type.name} as it's a non-delegate class`);
       }
-      if (klass.equals(SystemDelegate) || klass.equals(SystemMulticastDelegate)) {
+      if (klass2.equals(SystemDelegate) || klass2.equals(SystemMulticastDelegate)) {
         raise(`cannot create a delegate for neither ${SystemDelegate.type.name} nor ${SystemMulticastDelegate.type.name}, use a subclass instead`);
       }
-      const delegate2 = klass.alloc();
+      const delegate2 = klass2.alloc();
       const key = delegate2.handle.toString();
-      const Invoke = delegate2.tryMethod("Invoke") ?? raise(`cannot create a delegate for ${klass.type.name}, there is no Invoke method`);
+      const Invoke = delegate2.tryMethod("Invoke") ?? raise(`cannot create a delegate for ${klass2.type.name}, there is no Invoke method`);
       delegate2.method(".ctor").invoke(delegate2, Invoke.handle);
       const callback = Invoke.wrap(block);
       delegate2.field("method_ptr").value = callback;
@@ -2392,9 +2392,9 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       /** Creates a generic instance of the current generic method. */
       inflate(...classes) {
         if (!this.isGeneric || this.generics.length != classes.length) {
-          for (const method of this.overloads()) {
-            if (method.isGeneric && method.generics.length == classes.length) {
-              return method.inflate(...classes);
+          for (const method2 of this.overloads()) {
+            if (method2.isGeneric && method2.generics.length == classes.length) {
+              return method2.inflate(...classes);
             }
           }
           raise(`could not find inflatable signature of method ${this.name} with ${classes.length} generic parameter(s)`);
@@ -2440,15 +2440,15 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       }
       /** Gets the overloaded method with the given parameter types. */
       overload(...typeNamesOrClasses) {
-        const method = this.tryOverload(...typeNamesOrClasses);
-        return method ?? raise(`couldn't find overloaded method ${this.name}(${typeNamesOrClasses.map((_) => _ instanceof Il2Cpp3.Class ? _.type.name : _)})`);
+        const method2 = this.tryOverload(...typeNamesOrClasses);
+        return method2 ?? raise(`couldn't find overloaded method ${this.name}(${typeNamesOrClasses.map((_) => _ instanceof Il2Cpp3.Class ? _.type.name : _)})`);
       }
       /** @internal */
       *overloads() {
-        for (const klass of this.class.hierarchy()) {
-          for (const method of klass.methods) {
-            if (this.name == method.name) {
-              yield method;
+        for (const klass2 of this.class.hierarchy()) {
+          for (const method2 of klass2.methods) {
+            if (this.name == method2.name) {
+              yield method2;
             }
           }
         }
@@ -2467,12 +2467,12 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
         const minScore = typeNamesOrClasses.length * 1;
         const maxScore = typeNamesOrClasses.length * 2;
         let candidate = void 0;
-        loop: for (const method of this.overloads()) {
-          if (method.parameterCount != typeNamesOrClasses.length)
+        loop: for (const method2 of this.overloads()) {
+          if (method2.parameterCount != typeNamesOrClasses.length)
             continue;
           let score = 0;
           let i = 0;
-          for (const parameter of method.parameters) {
+          for (const parameter of method2.parameters) {
             const desiredTypeNameOrClass = typeNamesOrClasses[i];
             if (desiredTypeNameOrClass instanceof Il2Cpp3.Class) {
               if (parameter.type.is(desiredTypeNameOrClass.type)) {
@@ -2492,14 +2492,14 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
           if (score < minScore) {
             continue;
           } else if (score == maxScore) {
-            return method;
+            return method2;
           } else if (candidate == void 0 || score > candidate[0]) {
-            candidate = [score, method];
+            candidate = [score, method2];
           } else if (score == candidate[0]) {
             let i2 = 0;
             for (const parameter of candidate[1].parameters) {
-              if (parameter.type.class.isAssignableFrom(method.parameters[i2].type.class)) {
-                candidate = [score, method];
+              if (parameter.type.class.isAssignableFrom(method2.parameters[i2].type.class)) {
+                candidate = [score, method2];
                 continue loop;
               }
               i2++;
@@ -2536,9 +2536,9 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
                 return target.invokeRaw.bind(target, handle);
               case "overloads":
                 return function* () {
-                  for (const method of target[property]()) {
-                    if (!method.isStatic) {
-                      yield method;
+                  for (const method2 of target[property]()) {
+                    if (!method2.isStatic) {
+                      yield method2;
                     }
                   }
                 };
@@ -2706,15 +2706,15 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
         return new Il2Cpp3.GCHandle(Il2Cpp3.exports.gcHandleNew(this, +pin));
       }
       /** Gets the correct virtual method from the given virtual method. */
-      virtualMethod(method) {
-        return new Il2Cpp3.Method(Il2Cpp3.exports.objectGetVirtualMethod(this, method)).bind(this);
+      virtualMethod(method2) {
+        return new Il2Cpp3.Method(Il2Cpp3.exports.objectGetVirtualMethod(this, method2)).bind(this);
       }
       /** Gets the non-static field with the given name of the current class hierarchy, if it exists. */
       tryField(name) {
         const field = this.class.tryField(name);
         if (field?.isStatic) {
-          for (const klass of this.class.hierarchy({ includeCurrent: false })) {
-            for (const field2 of klass.fields) {
+          for (const klass2 of this.class.hierarchy({ includeCurrent: false })) {
+            for (const field2 of klass2.fields) {
               if (field2.name == name && !field2.isStatic) {
                 return field2.bind(this);
               }
@@ -2726,18 +2726,18 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       }
       /** Gets the non-static method with the given name (and optionally parameter count) of the current class hierarchy, if it exists. */
       tryMethod(name, parameterCount = -1) {
-        const method = this.class.tryMethod(name, parameterCount);
-        if (method?.isStatic) {
-          for (const klass of this.class.hierarchy()) {
-            for (const method2 of klass.methods) {
-              if (method2.name == name && !method2.isStatic && (parameterCount < 0 || method2.parameterCount == parameterCount)) {
-                return method2.bind(this);
+        const method2 = this.class.tryMethod(name, parameterCount);
+        if (method2?.isStatic) {
+          for (const klass2 of this.class.hierarchy()) {
+            for (const method3 of klass2.methods) {
+              if (method3.name == name && !method3.isStatic && (parameterCount < 0 || method3.parameterCount == parameterCount)) {
+                return method3.bind(this);
               }
             }
           }
           return void 0;
         }
-        return method?.bind(this);
+        return method2?.bind(this);
       }
       /** */
       toString() {
@@ -3040,12 +3040,12 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
         });
       }
       /** @internal */
-      tryLocalValue(klass) {
+      tryLocalValue(klass2) {
         for (let i = 0; i < 16; i++) {
           const base = this.staticData.add(i * Process.pointerSize).readPointer();
           if (!base.isNull()) {
             const object = new Il2Cpp3.Object(base.readPointer()).asNullable();
-            if (object?.class?.isSubclassOf(klass, false)) {
+            if (object?.class?.isSubclassOf(klass2, false)) {
               return object;
             }
           }
@@ -3304,8 +3304,8 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       tryField(name) {
         const field = this.type.class.tryField(name);
         if (field?.isStatic) {
-          for (const klass of this.type.class.hierarchy()) {
-            for (const field2 of klass.fields) {
+          for (const klass2 of this.type.class.hierarchy()) {
+            for (const field2 of klass2.fields) {
               if (field2.name == name && !field2.isStatic) {
                 return field2.bind(this);
               }
@@ -3317,18 +3317,18 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       }
       /** Gets the non-static method with the given name (and optionally parameter count) of the current class hierarchy, if it exists. */
       tryMethod(name, parameterCount = -1) {
-        const method = this.type.class.tryMethod(name, parameterCount);
-        if (method?.isStatic) {
-          for (const klass of this.type.class.hierarchy()) {
-            for (const method2 of klass.methods) {
-              if (method2.name == name && !method2.isStatic && (parameterCount < 0 || method2.parameterCount == parameterCount)) {
-                return method2.bind(this);
+        const method2 = this.type.class.tryMethod(name, parameterCount);
+        if (method2?.isStatic) {
+          for (const klass2 of this.type.class.hierarchy()) {
+            for (const method3 of klass2.methods) {
+              if (method3.name == name && !method3.isStatic && (parameterCount < 0 || method3.parameterCount == parameterCount)) {
+                return method3.bind(this);
               }
             }
           }
           return void 0;
         }
-        return method?.bind(this);
+        return method2?.bind(this);
       }
       /** */
       toString() {
@@ -3344,19 +3344,71 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
   })(Il2Cpp2 || (Il2Cpp2 = {}));
   globalThis.Il2Cpp = Il2Cpp2;
 
+  // helpers/capability.ts
+  var registry = [];
+  function defineCapability(capability) {
+    registry.push(capability);
+  }
+  function capabilities() {
+    return registry;
+  }
+
+  // helpers/resolve.ts
+  function assembly(name) {
+    return Il2Cpp.domain.tryAssembly(name);
+  }
+  function klass(assemblyName, fullyQualifiedName) {
+    return assembly(assemblyName)?.image.tryClass(fullyQualifiedName) ?? null;
+  }
+  function method(assemblyName, fullyQualifiedName, methodName, parameterCount) {
+    return klass(assemblyName, fullyQualifiedName)?.tryMethod(methodName, parameterCount) ?? null;
+  }
+
+  // capabilities/getCurrentRenderPipeline.ts
+  function currentPipelineGetter() {
+    return method("UnityEngine.CoreModule", "UnityEngine.Rendering.RenderPipelineManager", "get_currentPipeline");
+  }
+  defineCapability({
+    name: "getCurrentRenderPipeline",
+    detect: () => currentPipelineGetter() !== null,
+    register(exports) {
+      exports.getCurrentRenderPipeline = () => Il2Cpp.perform(() => {
+        const getter2 = currentPipelineGetter();
+        if (getter2 === null) return null;
+        const pipeline = getter2.invoke();
+        if (pipeline.isNull()) return null;
+        return pipeline.class.name;
+      });
+    }
+  });
+
   // index.ts
-  function perform() {
+  function bootstrap() {
     Il2Cpp.perform(() => {
       console.log("[+] IL2CPP attached");
-      rpc.exports.test = (arg) => {
-        console.log("[+] Test called with arg:", arg);
-        return "Hello from Frida!";
+      const exports = rpc.exports;
+      const detected = {};
+      for (const capability of capabilities()) {
+        const available = capability.detect();
+        detected[capability.name] = available;
+        if (available) {
+          capability.register?.(exports);
+        } else {
+          console.warn(`[!] capability '${capability.name}' unavailable`);
+        }
+      }
+      exports.capabilities = () => {
+        const snapshot = {};
+        for (const capability of capabilities()) {
+          snapshot[capability.name] = capability.detect();
+        }
+        return snapshot;
       };
+      console.log("[+] RPC exports:", Object.keys(exports));
+      console.log("[+] Capabilities detected:", JSON.stringify(detected));
+      send({ type: "event", event: "agent_ready", data: detected });
     });
   }
-  setTimeout(() => {
-    perform();
-    send({ type: "event", event: "agent_ready" });
-  }, 3e3);
+  setTimeout(bootstrap, 3e3);
   send({ type: "event", event: "agent_loaded" });
 })();

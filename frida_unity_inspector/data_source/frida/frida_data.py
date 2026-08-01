@@ -41,6 +41,7 @@ class FridaDataSource(BaseDataSource):
         self._running = False
         self._agent_loaded = False
         self._agent_ready = False
+        self._detected_capabilities: dict[str, Any] = {}
 
     # -- lifecycle --
     async def start(self) -> None:
@@ -131,8 +132,9 @@ class FridaDataSource(BaseDataSource):
             if not self._agent_ready:
                 continue  # Wait until the agent is ready before processing messages
 
-            response = await self.frida_injector.call("test", "test_msg")
-            self.logger.trace(f"Test call response: {response}")
+            if "getCurrentRenderPipeline" in self._detected_capabilities:
+                response = await self.frida_injector.call("getCurrentRenderPipeline")
+                self.logger.debug(f"getCurrentRenderPipeline response: {response}")
 
     # Message Handling
     def on_message(self, message: dict[str, Any], data: bytes | None) -> None:
@@ -180,10 +182,9 @@ class FridaDataSource(BaseDataSource):
         events = {
             "agent_loaded": self._handle_agent_loaded,
             "agent_ready": self._handle_agent_ready,
-            # Add more event handlers here as needed
         }
         if event in events:
-            events[event]()
+            events[event](event, event_data, data)
         else:
             self._handle_unknown_event(event, event_data, data)
 
@@ -193,15 +194,16 @@ class FridaDataSource(BaseDataSource):
         self.logger.warning(f"Received unknown event '{event}' from Frida agent.")
         self.logger.debug(f"Event data: {event_data} ||| Data: {data}")
 
-    def _handle_agent_loaded(self) -> None:
+    def _handle_agent_loaded(self, event: str, event_data: Any, data: bytes | None) -> None:
         """Handle the event when the Frida agent has been loaded."""
         self._agent_loaded = True
         self.logger.info("Frida agent loaded successfully.")
 
-    def _handle_agent_ready(self) -> None:
+    def _handle_agent_ready(self, event: str, event_data: Any, data: bytes | None) -> None:
         """Handle the event when the Frida agent is ready to receive commands."""
         self._agent_ready = True
-        self.logger.info("Frida agent is ready.")
+        self.logger.info(f"Frida agent is ready. Detected capabilities: {event_data}")
+        self._detected_capabilities = event_data if isinstance(event_data, dict) else {}
 
     # -- reading data --
     async def get_game_context(self) -> GameContext:
