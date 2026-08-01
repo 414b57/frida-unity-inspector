@@ -15,12 +15,13 @@ logger = logging.getLogger(f"fui.utils.frida_injector")
 
 MessageCallback = Callable[[dict, Optional[bytes]], Union[None, Awaitable[None]]]
 LogCallback = Callable[[str, str], Union[None, Awaitable[None]]]
+OutputCallback = Callable[[int, int, bytes], Union[None, Awaitable[None]]]  # (pid, fd, data); empty data means the stream closed
 
 
 class FridaInjector:
     """
     Uploads/starts a frida-server on a device and injects an agent script into a
-    target process, exposing an RPC interface and message/log callbacks.
+    target process, exposing an RPC interface and message/log/output callbacks.
 
     Two modes:
         - spawn:  spawn the package suspended, inject, then (optionally) resume.
@@ -93,6 +94,8 @@ class FridaInjector:
 
         self._on_message_callbacks: list[MessageCallback] = []
         self._on_log_callbacks: list[LogCallback] = []
+        self._on_output_callbacks: list[OutputCallback] = []
+        self._output_signal_connected: bool = False
 
     @property
     def _remote_server_path(self) -> str:
@@ -260,7 +263,8 @@ class FridaInjector:
             return False
         self._loop = asyncio.get_running_loop()
 
-        self._pid = self._frida_device.spawn([package_name])
+        self._connect_output_signal()
+        self._pid = self._frida_device.spawn([package_name], stdio="pipe")
         logger.debug("Spawned process '%s' with PID %s.", package_name, self._pid)
         self._session = self._frida_device.attach(self._pid)
         logger.debug("Attached to spawned process '%s' with PID %s.", package_name, self._pid)
@@ -327,6 +331,7 @@ class FridaInjector:
             except Exception as e:
                 logger.error("Failed to kill frida process with PID %s. Error: %s", self._pid, e)
 
+        self._disconnect_output_signal()
         self._frida_device = None
         self._session = None
         self._script = None
@@ -400,6 +405,60 @@ class FridaInjector:
             logger.debug("Unregistered on_log callback: %s", callback)
         else:
             logger.warning("Callback %s is not registered.", callback)
+
+    def register_on_output_callback(self, callback: OutputCallback) -> None:
+        if callback not in self._on_output_callbacks:
+            self._on_output_callbacks.append(callback)
+            logger.debug("Registered on_output callback: %s", callback)
+        else:
+            logger.warning("Callback %s is already registered.", callback)
+
+    def unregister_on_output_callback(self, callback: OutputCallback) -> None:
+        if callback in self._on_output_callbacks:
+            self._on_output_callbacks.remove(callback)
+            logger.debug("Unregistered on_output callback: %s", callback)
+        else:
+            logger.warning("Callback %s is not registered.", callback)
+
+    def _connect_output_signal(self) -> None:
+        if self._output_signal_connected or self._frida_device is None:
+            return
+        self._frida_device.on("output", self._on_frida_output)
+        self._output_signal_connected = True
+        logger.debug("Connected to device output signal.")
+
+    def _disconnect_output_signal(self) -> None:
+        if not self._output_signal_connected or self._frida_device is None:
+            return
+        try:
+            self._frida_device.off("output", self._on_frida_output)
+            logger.debug("Disconnected from device output signal.")
+        except Exception as e:
+            logger.error("Failed to disconnect device output signal. Error: %s", e)
+        self._output_signal_connected = False
+
+    def _on_frida_output(self, pid: int, fd: int, data: bytes) -> None:
+        if self._pid is not None and pid != self._pid:
+            return  # output from some other process spawned on this device
+        if data:
+            logger.god_save_you("[target:%s fd=%s] %s", pid, fd, data.decode(errors="replace").rstrip())
+        else:
+            logger.god_save_you("[target:%s fd=%s] <stream closed>", pid, fd)
+        if not self._on_output_callbacks:
+            return
+        if self._loop is not None:
+            asyncio.run_coroutine_threadsafe(self._handle_frida_output(pid, fd, data), self._loop)
+        else:
+            logger.error("Event loop is not set. Cannot handle frida output.")
+
+    async def _handle_frida_output(self, pid: int, fd: int, data: bytes) -> None:
+        for callback in self._on_output_callbacks:
+            try:
+                result = callback(pid, fd, data)
+                if asyncio.iscoroutine(result):
+                    await result
+            except Exception as e:
+                logger.error("Error in frida output callback: %s", e)
 
     def _on_frida_message(self, message: dict, data: Optional[bytes]) -> None:
         logger.god_save_you("Frida message received: %s | Data: %s", message, data)
