@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
-logger = logging.getLogger(f"fui.utils.{__name__}")
+logger = logging.getLogger(f"fui.utils.adb_device")
 
 
 @dataclass

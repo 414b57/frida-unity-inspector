@@ -11,7 +11,7 @@ import frida
 
 from .adb_device import AdbDevice
 
-logger = logging.getLogger(f"fui.utils.{__name__}")
+logger = logging.getLogger(f"fui.utils.frida_injector")
 
 MessageCallback = Callable[[dict, Optional[bytes]], Union[None, Awaitable[None]]]
 LogCallback = Callable[[str, str], Union[None, Awaitable[None]]]

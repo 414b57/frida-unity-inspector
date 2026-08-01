@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-log = logging.getLogger("fw.c.devices.device_discovery")
+logger = logging.getLogger("fui.utils.device_discovery")
 
 # Map ADB transport state -> status name
 _ADB_STATE_MAP = {
@@ -86,7 +86,7 @@ async def discover_devices(
                 meta=meta,
             )
         )
-        log.debug("Discovered device: %s (ADB state: %s)", device_id, adb_state)
+        logger.debug("Discovered device: %s (ADB state: %s)", device_id, adb_state)
 
     return devices
 
@@ -101,17 +101,17 @@ async def _run_adb_devices(adb_path: str, timeout: float = 10.0) -> Optional[str
         )
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
         if proc.returncode != 0:
-            log.error("ADB command failed: %s", stderr.decode().strip())
+            logger.error("ADB command failed: %s", stderr.decode().strip())
             return None
         return stdout.decode(errors="replace")
     except FileNotFoundError as e:
-        log.error("ADB executable not found at path: %s - %s", adb_path, e)
+        logger.error("ADB executable not found at path: %s - %s", adb_path, e)
         return None
     except asyncio.TimeoutError as e:
-        log.error("ADB command timed out after %.1f seconds - %s", timeout, e)
+        logger.error("ADB command timed out after %.1f seconds - %s", timeout, e)
         return None
     except Exception as e:
-        log.error("Error running ADB command: %s", e, exc_info=True)
+        logger.error("Error running ADB command: %s", e, exc_info=True)
         return None
 
 
@@ -137,16 +137,16 @@ async def _fetch_device_meta(
             if proc.returncode == 0:
                 meta[key] = stdout.decode().strip()
             else:
-                log.warning("Failed to get prop %s for device %s: %s", prop, device_id, stderr.decode().strip())
+                logger.warning("Failed to get prop %s for device %s: %s", prop, device_id, stderr.decode().strip())
         except FileNotFoundError as e:
-            log.error("ADB executable not found at path: %s - %s", adb_path, e)
+            logger.error("ADB executable not found at path: %s - %s", adb_path, e)
             return None
         except asyncio.TimeoutError as e:
-            log.error("ADB command for prop %s timed out after %.1f seconds for device %s - %s", prop, timeout, device_id, e)
+            logger.error("ADB command for prop %s timed out after %.1f seconds for device %s - %s", prop, timeout, device_id, e)
             # Don't fail the whole metadata fetch if one prop times out; just skip it
             meta[key] = None
         except Exception as e:
-            log.error("Error running ADB command: %s", e, exc_info=True)
+            logger.error("Error running ADB command: %s", e, exc_info=True)
             return None
 
     return meta
