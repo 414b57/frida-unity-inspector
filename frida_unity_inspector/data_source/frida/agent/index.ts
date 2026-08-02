@@ -31,11 +31,13 @@ function bootstrap() {
 
         // Live snapshot of what the target supports; re-probes on every call.
         exports.capabilities = () => {
-            const snapshot: Record<string, boolean> = {}
-            for (const capability of capabilities()) {
-                snapshot[capability.name] = capability.detect()
-            }
-            return snapshot
+            Il2Cpp.perform(() => {
+                const snapshot: Record<string, boolean> = {}
+                for (const capability of capabilities()) {
+                    snapshot[capability.name] = capability.detect()
+                }
+                return snapshot
+            })
         }
 
         console.log("[+] RPC exports:", Object.keys(exports))

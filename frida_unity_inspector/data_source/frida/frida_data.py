@@ -96,7 +96,7 @@ class FridaDataSource(BaseDataSource):
             agent_script=str(AGENT_FILE_PATH),
             spawn=self.spawn,
             resume_after_load=True,
-            kill_on_stop=True
+            kill_on_stop=self.kill_on_stop
         )
         self.logger.trace(f"Frida injector initialized for device {self.frida_device.id} and package {self.package} (spawn={self.spawn})")
 
@@ -132,7 +132,7 @@ class FridaDataSource(BaseDataSource):
             if not self._agent_ready:
                 continue  # Wait until the agent is ready before processing messages
 
-            if "getCurrentRenderPipeline" in self._detected_capabilities:
+            if self._detected_capabilities.get("getCurrentRenderPipeline", False):
                 response = await self.frida_injector.call("getCurrentRenderPipeline")
                 self.logger.debug(f"getCurrentRenderPipeline response: {response}")
 

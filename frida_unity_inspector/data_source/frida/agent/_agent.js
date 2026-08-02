@@ -3398,11 +3398,13 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
         }
       }
       exports.capabilities = () => {
-        const snapshot = {};
-        for (const capability of capabilities()) {
-          snapshot[capability.name] = capability.detect();
-        }
-        return snapshot;
+        Il2Cpp.perform(() => {
+          const snapshot = {};
+          for (const capability of capabilities()) {
+            snapshot[capability.name] = capability.detect();
+          }
+          return snapshot;
+        });
       };
       console.log("[+] RPC exports:", Object.keys(exports));
       console.log("[+] Capabilities detected:", JSON.stringify(detected));

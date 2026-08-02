@@ -48,7 +48,7 @@ def parse_args() -> argparse.Namespace:
     data_exclusive_group = data_parent_group.add_mutually_exclusive_group()
     data_exclusive_group.add_argument("--basic_mock", action="store_const", dest="data_source", const="basic_mock", default=argparse.SUPPRESS, help="Use `basic_mock` data source")
     data_exclusive_group.add_argument("--complex_mock", action="store_const", dest="data_source", const="complex_mock", default=argparse.SUPPRESS, help="Use `complex_mock` data source")
-    data_exclusive_group.add_argument("--frida", action="store_const", dest="data_source", const="mock", default=argparse.SUPPRESS, help="Use `frida` data source")
+    data_exclusive_group.add_argument("--frida", action="store_const", dest="data_source", const="frida", default=argparse.SUPPRESS, help="Use `frida` data source")
     data_exclusive_group.add_argument("--data_source",
                                     choices=["basic_mock", "complex_mock", "frida"],
                                     default=os.environ.get("FUI_DATA_SOURCE", "frida"),
@@ -64,7 +64,7 @@ def parse_args() -> argparse.Namespace:
     hosting_group.add_argument("--host", default=os.environ.get("FUI_HOST", "127.0.0.1"), help="Address to bind the web server to (default: %(default)s)")
     hosting_group.add_argument("--port", type=int, default=int(os.environ.get("FUI_PORT", "8000")), help="Port to bind the web server to (default: %(default)s)")
     hosting_exclusive_group = hosting_group.add_mutually_exclusive_group()
-    hosting_exclusive_group.add_argument("--unity_editor", action="store_true", dest="web_app", default=argparse.SUPPRESS, help="Use the Unity Editor web app (default)")
+    hosting_exclusive_group.add_argument("--unity_editor", action="store_true", dest="web_app", const="unity_editor", default=argparse.SUPPRESS, help="Use the Unity Editor web app (default)")
     hosting_exclusive_group.add_argument("--simple_list", action="store_const", dest="web_app", const="simple_list", default=argparse.SUPPRESS, help="Use the simple list web app")
     # TODO - other simple / test ones
     hosting_exclusive_group.add_argument("--web_app",
@@ -80,6 +80,8 @@ def build_data_source(data_source: str, device: str | None = None, package: str 
         return FridaDataSource(device=device, package=package, spawn=spawn, kill_on_stop=kill_on_stop)
     elif data_source == "basic_mock":
         return BasicMockDataSource()
+    elif data_source == "complex_mock":
+        raise NotImplementedError("Complex mock data source is not implemented yet.")
 
     raise ValueError(f"Unknown Data source specified - {data_source}")
 
