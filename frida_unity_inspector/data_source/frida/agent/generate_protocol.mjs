@@ -60,7 +60,7 @@ function parseType(spec) {
         return { py: `${inner.py} | None`, ts: `${inner.ts} | null` };
     }
 
-    const generic = /^(list|map)<(.*)>$/.exec(text); // Match list<T> or map<K, V> | TODO Look into a better way so dont have to manually define each mapping.
+    const generic = /^(list|map|tuple)<(.*)>$/.exec(text); // Match list<T>, map<K, V> or tuple<T, ...> | TODO Look into a better way so dont have to manually define each mapping.
     if (generic !== null) {
         // If found - Ensure the correct number of type arguments are provided, and recursively parse them.
         const [, kind, rawArgs] = generic;
@@ -69,13 +69,24 @@ function parseType(spec) {
             if (args.length !== 1) throw new Error(`list<> takes exactly 1 type argument - '${spec}'`);
             return { py: `list[${args[0].py}]`, ts: `${args[0].ts}[]` };
         }
-        if (args.length !== 2) throw new Error(`map<> takes exactly 2 type arguments - '${spec}'`);
-        return { py: `dict[${args[0].py}, ${args[1].py}]`, ts: `Record<${args[0].ts}, ${args[1].ts}>` };
+        if (kind === "map") {
+            if (args.length !== 2) throw new Error(`map<> takes exactly 2 type arguments - '${spec}'`);
+            return { py: `dict[${args[0].py}, ${args[1].py}]`, ts: `Record<${args[0].ts}, ${args[1].ts}>` };
+        }
+        if (kind === "tuple") {
+            if (args.length === 0) throw new Error(`tuple<> takes at least 1 type argument - '${spec}'`);
+            return {
+                py: `tuple[${args.map((arg) => arg.py).join(", ")}]`,
+                ts: `[${args.map((arg) => arg.ts).join(", ")}]`,
+            };
+        }
+
+        throw new Error(`Unknown generic type - '${spec}''`);
     }
 
     const primitive = PRIMITIVES[text];
     if (primitive === undefined) {
-        throw new Error(`Unknown type specified - '${spec}' (known: ${Object.keys(PRIMITIVES).join(", ")}, T?, list<T>, map<K, V>)`);
+        throw new Error(`Unknown type specified - '${spec}' (known: ${Object.keys(PRIMITIVES).join(", ")}, T?, list<T>, map<K, V>, tuple<T, ...>)`);
     }
     return primitive;
 }
