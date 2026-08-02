@@ -36,6 +36,7 @@ class FridaDataSource(BaseDataSource):
         self.adb_device: AdbDevice | None = None
         self.frida_device: frida.Device | None = None
         self.frida_injector: FridaInjector | None = None
+        self._run_loop_task: asyncio.Task | None = None
 
         # runtime - state
         self._running = False
@@ -105,15 +106,17 @@ class FridaDataSource(BaseDataSource):
         if not is_local:
             await self.frida_injector.ensure_server()
             self.logger.trace(f"Frida server ensured on device {self.frida_device.id}")
-        await self.frida_injector.inject(self.package)
+        success = await self.frida_injector.inject(self.package)
+        if not success:
+            raise RuntimeError(f"Failed to inject Frida agent into package {self.package} on device {self.frida_device.id}")
         self.logger.trace(f"Frida agent injected/spawned into package {self.package} on device {self.frida_device.id}")
 
-        # Start the run loop
-        asyncio.create_task(self._run())
+        self._run_loop_task = asyncio.create_task(self._run())
 
     async def stop(self) -> None:
         """TODO"""
         self.logger.info("Stopping FridaDataSource...")
+        self._run_loop_task.cancel()
         self._running = False
         if self.frida_injector:
             self.frida_injector.detach()
