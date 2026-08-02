@@ -57,14 +57,14 @@ def parse_args() -> argparse.Namespace:
     device_group = p.add_argument_group(title="Device")
     device_group.add_argument("--device", default=os.environ.get("FUI_DEVICE", "adb"), help="frida device: local | adb | <device-id> (default: %(default)s)")
     device_group.add_argument("--package", default=os.environ.get("FUI_PACKAGE"), help="package to attach to")
-    device_group.add_argument("--spawn", action="store_true", default=parse_bool(os.environ.get("FUI_SPAWN", "false")), help="spawn the target instead of attaching to a running one")
-    device_group.add_argument("--kill-on-stop", action="store_true", default=parse_bool(os.environ.get("FUI_KILL_ON_STOP", "false")), help="kill the target when stopping the inspector")
+    device_group.add_argument("--spawn", action=argparse.BooleanOptionalAction, default=parse_bool(os.environ.get("FUI_SPAWN", "false")), help="spawn the target instead of attaching to a running one")
+    device_group.add_argument("--kill-on-stop", action=argparse.BooleanOptionalAction, default=parse_bool(os.environ.get("FUI_KILL_ON_STOP", "false")), help="kill the target when stopping the inspector")
 
     hosting_group = p.add_argument_group(title="Web Hosting")
     hosting_group.add_argument("--host", default=os.environ.get("FUI_HOST", "127.0.0.1"), help="Address to bind the web server to (default: %(default)s)")
     hosting_group.add_argument("--port", type=int, default=int(os.environ.get("FUI_PORT", "8000")), help="Port to bind the web server to (default: %(default)s)")
     hosting_exclusive_group = hosting_group.add_mutually_exclusive_group()
-    hosting_exclusive_group.add_argument("--unity_editor", action="store_true", dest="web_app", const="unity_editor", default=argparse.SUPPRESS, help="Use the Unity Editor web app (default)")
+    hosting_exclusive_group.add_argument("--unity_editor", action="store_const", dest="web_app", const="unity_editor", default=argparse.SUPPRESS, help="Use the Unity Editor web app (default)")
     hosting_exclusive_group.add_argument("--simple_list", action="store_const", dest="web_app", const="simple_list", default=argparse.SUPPRESS, help="Use the simple list web app")
     # TODO - other simple / test ones
     hosting_exclusive_group.add_argument("--web_app",
