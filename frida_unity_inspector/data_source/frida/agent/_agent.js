@@ -3362,7 +3362,8 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     AGENT_READY: "agent_ready"
   };
   var Builtins = {
-    CAPABILITIES: "capabilities"
+    CAPABILITIES: "capabilities",
+    VERSION: "version"
   };
   var Capabilities = {
     GET_CURRENT_RENDER_PIPELINE: "getCurrentRenderPipeline"
@@ -3422,6 +3423,9 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
         }
         return snapshot;
       });
+      exports[Builtins.VERSION] = () => {
+        return "0.1.0";
+      };
       console.log("[+] RPC exports:", Object.keys(exports));
       console.log("[+] Capabilities detected:", JSON.stringify(detected));
       sendEvent(Events.AGENT_READY, detected);

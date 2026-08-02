@@ -31,15 +31,15 @@ class FridaDataSource(BaseDataSource):
         self.spawn = spawn
         self.kill_on_stop = kill_on_stop
 
-        # runtime - handlers
+        # runtime - internal state
         self.frida_device: frida.core.Device | None = None
         self.adb_device: AdbDevice | None = None
         self.frida_injector: FridaInjector | None = None
         self.session: AgentSession | None = None
         self._run_loop_task: asyncio.Task | None = None
-
-        # runtime - state
         self._running = False
+
+        # runtime - external state (From agent/unity)
 
     # -- lifecycle --
     async def start(self) -> None:

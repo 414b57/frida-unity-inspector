@@ -40,6 +40,11 @@ function bootstrap() {
                 return snapshot
             })
 
+        // Returns current version of agent
+        exports[Builtins.VERSION] = () => {
+            return "0.1.0"
+        }
+
         console.log("[+] RPC exports:", Object.keys(exports))
 
         console.log("[+] Capabilities detected:", JSON.stringify(detected))

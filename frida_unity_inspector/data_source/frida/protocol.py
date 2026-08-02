@@ -18,6 +18,7 @@ class Events(StrEnum):
 
 class Builtins(StrEnum):
     CAPABILITIES = "capabilities"
+    VERSION = "version"
 
 
 class Capabilities(StrEnum):
@@ -36,6 +37,7 @@ EVENT_DATA_ADAPTERS: dict[Events, TypeAdapter[Any]] = {
 
 # TypeAdapters for validating RPC return values
 _CAPABILITIES_RETURN: TypeAdapter[Any] = TypeAdapter(dict[str, bool])
+_VERSION_RETURN: TypeAdapter[Any] = TypeAdapter(str)
 _GET_CURRENT_RENDER_PIPELINE_RETURN: TypeAdapter[Any] = TypeAdapter(str | None)
 
 
@@ -54,6 +56,10 @@ class AgentRpc:
     async def capabilities(self) -> dict[str, bool]:
         result = await self._call(Builtins.CAPABILITIES)
         return _CAPABILITIES_RETURN.validate_python(result)
+
+    async def version(self) -> str:
+        result = await self._call(Builtins.VERSION)
+        return _VERSION_RETURN.validate_python(result)
 
     async def get_current_render_pipeline(self) -> str | None:
         result = await self._call(Capabilities.GET_CURRENT_RENDER_PIPELINE)

@@ -7,7 +7,7 @@
     "generate": "node generate_protocol.mjs",
     "typecheck": "tsc --noEmit",
     "build": "npm run generate && npm run typecheck && esbuild index.ts --bundle --outfile=_agent.js --format=iife --platform=neutral --log-level=warning",
-    "watch": "npm run generate && esbuild index.ts --bundle --outfile=_agent.js --format=iife --platform=neutral --log-level=warning --watch"
+    "watch": "node watch.mjs"
   },
   "devDependencies": {
     "@types/frida-gum": "^19.7.0",

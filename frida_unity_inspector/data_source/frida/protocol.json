@@ -28,6 +28,11 @@
             "name": "capabilities",
             "args": [],
             "returns": "map<string, bool>"
+        },
+        "VERSION": {
+            "name": "version",
+            "args": [],
+            "returns": "string"
         }
     },
 

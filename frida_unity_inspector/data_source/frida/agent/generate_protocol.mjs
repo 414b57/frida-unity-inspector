@@ -220,7 +220,17 @@ function renderTypeScript() {
     return out;
 }
 
-// ---- write -----------------------------------------------------------------
-writeFileSync(pythonOut, renderPython());
-writeFileSync(typescriptOut, renderTypeScript());
-console.log(`[+] protocol: generated ${path.relative(process.cwd(), pythonOut)} and ${path.relative(process.cwd(), typescriptOut)}`);
+function writeIfChanged(filePath, content) {
+    let existing = null;
+    try {
+        existing = readFileSync(filePath, "utf-8");
+    } catch {}
+    if (existing === content) return false;
+    writeFileSync(filePath, content);
+    return true;
+}
+
+const wrotePython = writeIfChanged(pythonOut, renderPython());
+const wroteTypescript = writeIfChanged(typescriptOut, renderTypeScript());
+const status = wrotePython || wroteTypescript ? "generated" : "up to date";
+console.log(`[+] protocol: ${status} - ${path.relative(process.cwd(), pythonOut)} and ${path.relative(process.cwd(), typescriptOut)}`);
