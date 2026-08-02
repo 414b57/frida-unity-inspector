@@ -42,7 +42,7 @@ class AgentSession:
         """Stop receiving messages from the injector."""
         self._injector.unregister_on_message_callback(self._on_message)
 
-    # -- state --
+    # state 
     def has_capability(self, capability: Capabilities | str) -> bool:
         """Whether the agent detected `capability` as available. False until the agent is ready."""
         return self.capabilities.get(capability, False)
@@ -50,8 +50,15 @@ class AgentSession:
     def register_event_handler(self, event: Events, handler: EventHandler) -> None:
         """Route `event` to `handler`, replacing any existing route for it."""
         self._event_handlers[event] = handler
+    
+    # helper
+    def call_capability(self, capability: Capabilities | str, *args: Any, **kwargs: Any) -> Any:
+        """Call an agent RPC method, but only if the agent has the given capability."""
+        if not self.has_capability(capability):
+            raise RuntimeError(f"Agent does not have capability '{capability}'")
+        return self.rpc.dispatch(capability, *args, **kwargs)
 
-    # -- message routing --
+    # message routing 
     def _on_message(self, message: dict[str, Any], data: bytes | None) -> None:
         """Entry point for every message the injector receives from the agent."""
         logger.trace(f"Received message from agent: {message}, data length: {len(data) if data else 0}")
@@ -104,7 +111,7 @@ class AgentSession:
             return
         handler(event, event_data, data)
 
-    # -- built-in lifecycle handlers --
+    # built-in lifecycle handlers 
     def _on_agent_loaded(self, event: Events, event_data: AgentLoadedData, data: bytes | None) -> None:
         self.loaded.set()
         logger.info("Frida agent loaded successfully.")

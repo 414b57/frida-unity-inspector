@@ -19,6 +19,8 @@ class Events(StrEnum):
 class Builtins(StrEnum):
     CAPABILITIES = "capabilities"
     VERSION = "version"
+    UNITY_VERSION = "unityVersion"
+    PING = "ping"
 
 
 class Capabilities(StrEnum):
@@ -38,6 +40,8 @@ EVENT_DATA_ADAPTERS: dict[Events, TypeAdapter[Any]] = {
 # TypeAdapters for validating RPC return values
 _CAPABILITIES_RETURN: TypeAdapter[Any] = TypeAdapter(dict[str, bool])
 _VERSION_RETURN: TypeAdapter[Any] = TypeAdapter(str)
+_UNITY_VERSION_RETURN: TypeAdapter[Any] = TypeAdapter(str)
+_PING_RETURN: TypeAdapter[Any] = TypeAdapter(str)
 _GET_CURRENT_RENDER_PIPELINE_RETURN: TypeAdapter[Any] = TypeAdapter(str | None)
 
 
@@ -51,7 +55,20 @@ class AgentRpc:
     """
 
     def __init__(self, call: RpcCall) -> None:
-        self._call = call
+            self._call = call
+            self._dispatch: dict[StrEnum, RpcCall] = {
+                Builtins.CAPABILITIES: self.capabilities,
+                Builtins.VERSION: self.version,
+                Builtins.UNITY_VERSION: self.unity_version,
+                Builtins.PING: self.ping,
+                Capabilities.GET_CURRENT_RENDER_PIPELINE: self.get_current_render_pipeline,
+            }
+
+    def dispatch(self, key: StrEnum, *args, **kwargs) -> Awaitable[Any]:
+        """Dispatches an RPC call based on the key, and returns the validated result."""
+        if key not in self._dispatch:
+            raise ValueError(f"Unknown RPC key: {key}")
+        return self._dispatch[key](*args, **kwargs)
 
     async def capabilities(self) -> dict[str, bool]:
         result = await self._call(Builtins.CAPABILITIES)
@@ -60,6 +77,14 @@ class AgentRpc:
     async def version(self) -> str:
         result = await self._call(Builtins.VERSION)
         return _VERSION_RETURN.validate_python(result)
+
+    async def unity_version(self) -> str:
+        result = await self._call(Builtins.UNITY_VERSION)
+        return _UNITY_VERSION_RETURN.validate_python(result)
+
+    async def ping(self, msg: str) -> str:
+        result = await self._call(Builtins.PING, msg)
+        return _PING_RETURN.validate_python(result)
 
     async def get_current_render_pipeline(self) -> str | None:
         result = await self._call(Capabilities.GET_CURRENT_RENDER_PIPELINE)

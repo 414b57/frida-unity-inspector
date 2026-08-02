@@ -3363,7 +3363,9 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
   };
   var Builtins = {
     CAPABILITIES: "capabilities",
-    VERSION: "version"
+    VERSION: "version",
+    UNITY_VERSION: "unityVersion",
+    PING: "ping"
   };
   var Capabilities = {
     GET_CURRENT_RENDER_PIPELINE: "getCurrentRenderPipeline"
@@ -3421,11 +3423,25 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
         for (const capability of capabilities()) {
           snapshot[capability.name] = capability.detect();
         }
+        snapshot[Builtins.CAPABILITIES] = true;
+        snapshot[Builtins.VERSION] = true;
+        snapshot[Builtins.UNITY_VERSION] = true;
+        snapshot[Builtins.PING] = true;
         return snapshot;
       });
+      detected[Builtins.CAPABILITIES] = true;
       exports[Builtins.VERSION] = () => {
         return "0.1.0";
       };
+      detected[Builtins.VERSION] = true;
+      exports[Builtins.UNITY_VERSION] = () => {
+        return Il2Cpp.unityVersion;
+      };
+      detected[Builtins.UNITY_VERSION] = true;
+      exports[Builtins.PING] = (msg) => {
+        return `pong: ${msg}`;
+      };
+      detected[Builtins.PING] = true;
       console.log("[+] RPC exports:", Object.keys(exports));
       console.log("[+] Capabilities detected:", JSON.stringify(detected));
       sendEvent(Events.AGENT_READY, detected);

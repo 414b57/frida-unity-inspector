@@ -37,13 +37,32 @@ function bootstrap() {
                 for (const capability of capabilities()) {
                     snapshot[capability.name] = capability.detect()
                 }
+                // Ugly way - but cba to mess around with backend rn. Just want to begin implementing features. TODO - Improve.
+                snapshot[Builtins.CAPABILITIES] = true
+                snapshot[Builtins.VERSION] = true
+                snapshot[Builtins.UNITY_VERSION] = true
+                snapshot[Builtins.PING] = true
                 return snapshot
             })
+        detected[Builtins.CAPABILITIES] = true
 
         // Returns current version of agent
         exports[Builtins.VERSION] = () => {
             return "0.1.0"
         }
+        detected[Builtins.VERSION] = true
+
+        // Returns current unity version of the target process
+        exports[Builtins.UNITY_VERSION] = () => {
+            return Il2Cpp.unityVersion
+        }
+        detected[Builtins.UNITY_VERSION] = true
+
+        // Ping
+        exports[Builtins.PING] = (msg: string) => {
+            return `pong: ${msg}`
+        }
+        detected[Builtins.PING] = true
 
         console.log("[+] RPC exports:", Object.keys(exports))
 

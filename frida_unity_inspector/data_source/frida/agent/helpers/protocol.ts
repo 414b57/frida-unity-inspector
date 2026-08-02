@@ -17,6 +17,8 @@ export type EventName = (typeof Events)[keyof typeof Events]
 export const Builtins = {
     CAPABILITIES: "capabilities",
     VERSION: "version",
+    UNITY_VERSION: "unityVersion",
+    PING: "ping",
 } as const
 export type BuiltinName = (typeof Builtins)[keyof typeof Builtins]
 
@@ -40,6 +42,8 @@ export interface CapabilitySignatures {
 export interface BuiltinSignatures {
     "capabilities": () => Record<string, boolean> | Promise<Record<string, boolean>>
     "version": () => string | Promise<string>
+    "unityVersion": () => string | Promise<string>
+    "ping": (msg: string) => string | Promise<string>
 }
 
 /** Helper for sending an event to the Python side with a payload matching the protocol. */

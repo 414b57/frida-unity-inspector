@@ -33,6 +33,19 @@
             "name": "version",
             "args": [],
             "returns": "string"
+        },
+        "UNITY_VERSION": {
+            "name": "unityVersion",
+            "args": [],
+            "returns": "string"
+        },
+        "PING": {
+            "name": "ping",
+            "args": [{
+                "name": "msg",
+                "type": "string"
+            }],
+            "returns": "string"
         }
     },
 

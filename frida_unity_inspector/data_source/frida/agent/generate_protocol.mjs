@@ -161,7 +161,16 @@ function renderPython() {
     out += `    """Typed wrappers around the agent's RPC exports.\n\n`;
     out += `    Each method corresponds to an RPC call, and returns the validated result via pydantic. Raises ValidationError if the result is invalid.\n`;
     out += `    """\n\n`;
-    out += `    def __init__(self, call: RpcCall) -> None:\n        self._call = call\n`;
+    out += `    def __init__(self, call: RpcCall) -> None:\n`;
+    out += `            self._call = call\n`;
+    out += `            self._dispatch: dict[StrEnum, RpcCall] = {\n`;
+    for (const call of allCalls) out += `                ${call.enum}.${call.key}: self.${snakeCase(call.key)},\n`;
+    out += `            }\n\n`;
+    out += `    def dispatch(self, key: StrEnum, *args, **kwargs) -> Awaitable[Any]:\n`;
+    out += `        """Dispatches an RPC call based on the key, and returns the validated result."""\n`;
+    out += `        if key not in self._dispatch:\n`;
+    out += `            raise ValueError(f"Unknown RPC key: {key}")\n`;
+    out += `        return self._dispatch[key](*args, **kwargs)\n`;
     for (const call of allCalls) {
         const params = call.args.map((arg) => `, ${arg.name}: ${arg.type.py}`).join("");
         const passed = call.args.map((arg) => `, ${arg.name}`).join("");
