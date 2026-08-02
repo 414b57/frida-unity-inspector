@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from pydantic import ValidationError
+
 from ..models import LogType, IconName, GameContext, SceneDeclaration, LogEntry, Status, Scene, HierarchyNode, GameObjectData, Component, Property
 from ..models import Vector2, Vector3, Color, Vector2Property, Vector3Property, FloatProperty, BoolProperty, StringProperty, EnumProperty, ColorProperty
 
 from ..base_data import BaseDataSource, LogCallback
+from .protocol import EVENT_DATA_ADAPTERS, AgentLoadedData, AgentReadyData, AgentRpc, Capabilities, Events, MessageTypes
 from frida_unity_inspector.utils import DiscoveredDevice, device_discovery, AdbDevice, FridaInjector
 
 import asyncio
@@ -36,13 +39,14 @@ class FridaDataSource(BaseDataSource):
         self.adb_device: AdbDevice | None = None
         self.frida_device: frida.Device | None = None
         self.frida_injector: FridaInjector | None = None
+        self.rpc: AgentRpc | None = None
         self._run_loop_task: asyncio.Task | None = None
 
         # runtime - state
         self._running = False
         self._agent_loaded = False
         self._agent_ready = False
-        self._detected_capabilities: dict[str, Any] = {}
+        self._detected_capabilities: dict[str, bool] = {}
 
     # -- lifecycle --
     async def start(self) -> None:
@@ -99,6 +103,7 @@ class FridaDataSource(BaseDataSource):
             resume_after_load=True,
             kill_on_stop=self.kill_on_stop
         )
+        self.rpc = AgentRpc(self.frida_injector.call)
         self.logger.trace(f"Frida injector initialized for device {self.frida_device.id} and package {self.package} (spawn={self.spawn})")
 
         self.frida_injector.register_on_message_callback(self.on_message)
@@ -135,9 +140,10 @@ class FridaDataSource(BaseDataSource):
             if not self._agent_ready:
                 continue  # Wait until the agent is ready before processing messages
 
-            if self._detected_capabilities.get("getCurrentRenderPipeline", False):
-                response = await self.frida_injector.call("getCurrentRenderPipeline")
-                self.logger.debug(f"getCurrentRenderPipeline response: {response}")
+            if self._detected_capabilities.get(Capabilities.GET_CURRENT_RENDER_PIPELINE, False):
+                # None here means the built-in render pipeline.
+                render_pipeline: str | None = await self.rpc.get_current_render_pipeline()
+                self.logger.debug(f"getCurrentRenderPipeline response: {render_pipeline}")
 
     # Message Handling
     def on_message(self, message: dict[str, Any], data: bytes | None) -> None:
@@ -167,7 +173,7 @@ class FridaDataSource(BaseDataSource):
             self.logger.warning("Received 'send' message without 'type' field from Frida agent.")
             self.logger.debug(f"Message: {message} ||| Data: {data}")
             return
-        if message_type == "event":
+        if message_type == MessageTypes.EVENT:
             event = payload.get("event", None)
             event_data = payload.get("data", None)
             if event is None:
@@ -183,13 +189,21 @@ class FridaDataSource(BaseDataSource):
         """Handle events sent from the Frida agent."""
         self.logger.trace(f"Handling event '{event}' with data: {event_data}")
         events = {
-            "agent_loaded": self._handle_agent_loaded,
-            "agent_ready": self._handle_agent_ready,
+            Events.AGENT_LOADED: self._handle_agent_loaded,
+            Events.AGENT_READY: self._handle_agent_ready,
         }
-        if event in events:
-            events[event](event, event_data, data)
-        else:
+        if event not in events:
             self._handle_unknown_event(event, event_data, data)
+            return
+
+        try:
+            event_data = EVENT_DATA_ADAPTERS[Events(event)].validate_python(event_data)
+        except ValidationError as e:
+            self.logger.error(f"Event '{event}' from Frida agent has an unexpected payload: {e}")
+            self.logger.debug(f"Event data: {event_data} ||| Data: {data}")
+            return
+
+        events[event](event, event_data, data)
 
     # Event Handlers
     def _handle_unknown_event(self, event: str, event_data: Any, data: bytes | None) -> None:
@@ -197,16 +211,16 @@ class FridaDataSource(BaseDataSource):
         self.logger.warning(f"Received unknown event '{event}' from Frida agent.")
         self.logger.debug(f"Event data: {event_data} ||| Data: {data}")
 
-    def _handle_agent_loaded(self, event: str, event_data: Any, data: bytes | None) -> None:
+    def _handle_agent_loaded(self, event: str, event_data: AgentLoadedData, data: bytes | None) -> None:
         """Handle the event when the Frida agent has been loaded."""
         self._agent_loaded = True
         self.logger.info("Frida agent loaded successfully.")
 
-    def _handle_agent_ready(self, event: str, event_data: Any, data: bytes | None) -> None:
+    def _handle_agent_ready(self, event: str, event_data: AgentReadyData, data: bytes | None) -> None:
         """Handle the event when the Frida agent is ready to receive commands."""
         self._agent_ready = True
         self.logger.info(f"Frida agent is ready. Detected capabilities: {event_data}")
-        self._detected_capabilities = event_data if isinstance(event_data, dict) else {}
+        self._detected_capabilities = event_data
 
     # -- reading data --
     async def get_game_context(self) -> GameContext:

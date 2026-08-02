@@ -1,19 +1,28 @@
-export interface Capability {
-    /** Stable identifier reported to the Python side, e.g. "hierarchy". */
-    name: string;
-    /** Fresh probe of the target. Return true when the capability is usable. */
+import { CapabilityName, CapabilitySignatures } from "./protocol";
+
+export interface Capability<N extends CapabilityName = CapabilityName> {
+    /** Stable identifier from protocol.json, also the name of the RPC export. */
+    name: N;
+    /** Returns true if the capability is available in the current target/required functions not stripped. */
     detect(): boolean;
-    /** Wire RPC exports for this capability. Called only when detect() returned true. */
-    register?(exports: Record<string, unknown>): void;
+    /**
+     * The capability itself. Its signature is pinned by protocol.json, so args and return type stay in step with the Python bindings.
+     */
+    implementation: CapabilitySignatures[N];
 }
 
-const registry: Capability[] = [];
+type RegisteredCapability = {
+    name: CapabilityName;
+    detect(): boolean;
+    implementation: (...args: any[]) => unknown;
+};
 
-/** Register a capability. Call at module top level; index.ts imports each module for the side effect. */
-export function defineCapability(capability: Capability): void {
-    registry.push(capability);
+const registry: RegisteredCapability[] = [];
+
+export function defineCapability<N extends CapabilityName>(capability: Capability<N>): void {
+    registry.push(capability as RegisteredCapability);
 }
 
-export function capabilities(): readonly Capability[] {
+export function capabilities(): readonly RegisteredCapability[] {
     return registry;
 }

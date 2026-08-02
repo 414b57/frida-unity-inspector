@@ -4,12 +4,15 @@
   "private": true,
   "description": "Default frida-il2cpp-bridge agent for the frida_injector module",
   "scripts": {
-    "build": "esbuild index.ts --bundle --outfile=_agent.js --format=iife --platform=neutral --log-level=warning",
-    "watch": "npm run build -- --watch"
+    "generate": "node generate_protocol.mjs",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run generate && npm run typecheck && esbuild index.ts --bundle --outfile=_agent.js --format=iife --platform=neutral --log-level=warning",
+    "watch": "npm run generate && esbuild index.ts --bundle --outfile=_agent.js --format=iife --platform=neutral --log-level=warning --watch"
   },
   "devDependencies": {
     "@types/frida-gum": "^19.7.0",
     "esbuild": "^0.21.0",
-    "frida-il2cpp-bridge": "^0.13.0"
+    "frida-il2cpp-bridge": "^0.13.0",
+    "typescript": "^7.0.2"
   }
 }

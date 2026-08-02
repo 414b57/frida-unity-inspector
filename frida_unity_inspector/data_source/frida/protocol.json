@@ -1,0 +1,41 @@
+{
+    "_comment": [
+        "Single source of truth for everything crossing the Python <-> agent boundary.",
+        "",
+        "Type vocabulary: string | int | float | bool | null | any,",
+        "  `T?` for nullable, `list<T>`, `map<K, V>`.",
+        "",
+        "To add a new function/capability/event, add it to the appropriate section below. The agent will automatically generate the necessary code to handle it."
+    ],
+
+    "message_types": {
+        "EVENT": "event"
+    },
+
+    "events": {
+        "AGENT_LOADED": {
+            "name": "agent_loaded",
+            "data": "null"
+        },
+        "AGENT_READY": {
+            "name": "agent_ready",
+            "data": "map<string, bool>"
+        }
+    },
+
+    "builtins": {
+        "CAPABILITIES": {
+            "name": "capabilities",
+            "args": [],
+            "returns": "map<string, bool>"
+        }
+    },
+
+    "capabilities": {
+        "GET_CURRENT_RENDER_PIPELINE": {
+            "name": "getCurrentRenderPipeline",
+            "args": [],
+            "returns": "string?"
+        }
+    }
+}

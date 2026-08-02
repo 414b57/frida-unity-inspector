@@ -3353,6 +3353,24 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     return registry;
   }
 
+  // helpers/protocol.ts
+  var MessageTypes = {
+    EVENT: "event"
+  };
+  var Events = {
+    AGENT_LOADED: "agent_loaded",
+    AGENT_READY: "agent_ready"
+  };
+  var Builtins = {
+    CAPABILITIES: "capabilities"
+  };
+  var Capabilities = {
+    GET_CURRENT_RENDER_PIPELINE: "getCurrentRenderPipeline"
+  };
+  function sendEvent(event, data) {
+    send({ type: MessageTypes.EVENT, event, data });
+  }
+
   // helpers/resolve.ts
   function assembly(name) {
     return Il2Cpp.domain.tryAssembly(name);
@@ -3365,15 +3383,15 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
   }
 
   // capabilities/getCurrentRenderPipeline.ts
-  function currentPipelineGetter() {
+  function getCurrentRenderPipelineMethod() {
     return method("UnityEngine.CoreModule", "UnityEngine.Rendering.RenderPipelineManager", "get_currentPipeline");
   }
   defineCapability({
-    name: "getCurrentRenderPipeline",
-    detect: () => currentPipelineGetter() !== null,
-    register(exports) {
-      exports.getCurrentRenderPipeline = () => Il2Cpp.perform(() => {
-        const getter2 = currentPipelineGetter();
+    name: Capabilities.GET_CURRENT_RENDER_PIPELINE,
+    detect: () => getCurrentRenderPipelineMethod() !== null,
+    implementation() {
+      return Il2Cpp.perform(() => {
+        const getter2 = getCurrentRenderPipelineMethod();
         if (getter2 === null) return null;
         const pipeline = getter2.invoke();
         if (pipeline.isNull()) return null;
@@ -3392,25 +3410,23 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
         const available = capability.detect();
         detected[capability.name] = available;
         if (available) {
-          capability.register?.(exports);
+          exports[capability.name] = capability.implementation;
         } else {
           console.warn(`[!] capability '${capability.name}' unavailable`);
         }
       }
-      exports.capabilities = () => {
-        Il2Cpp.perform(() => {
-          const snapshot = {};
-          for (const capability of capabilities()) {
-            snapshot[capability.name] = capability.detect();
-          }
-          return snapshot;
-        });
-      };
+      exports[Builtins.CAPABILITIES] = () => Il2Cpp.perform(() => {
+        const snapshot = {};
+        for (const capability of capabilities()) {
+          snapshot[capability.name] = capability.detect();
+        }
+        return snapshot;
+      });
       console.log("[+] RPC exports:", Object.keys(exports));
       console.log("[+] Capabilities detected:", JSON.stringify(detected));
-      send({ type: "event", event: "agent_ready", data: detected });
+      sendEvent(Events.AGENT_READY, detected);
     });
   }
   setTimeout(bootstrap, 3e3);
-  send({ type: "event", event: "agent_loaded" });
+  sendEvent(Events.AGENT_LOADED, null);
 })();
