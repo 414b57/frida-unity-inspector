@@ -10,6 +10,7 @@ from .device_resolver import resolve_frida_device
 from .protocol import Capabilities, Builtins
 from frida_unity_inspector.utils import AdbDevice, FridaInjector
 
+import time
 import asyncio
 import frida
 import pathlib
@@ -103,24 +104,26 @@ class FridaDataSource(BaseDataSource):
             try:
                 await self._tick()
             except Exception as e:
-                self.logger.error(f"Error in FridaDataSource run loop: {e}")
+                self.logger.error(f"Error in FridaDataSource run loop: {e}\n", exc_info=e)
             finally:
                 await asyncio.sleep(1)
 
     async def _tick(self) -> None:
         """TODO"""
+        start = time.time()
+        python_to_ts_delay, ts_time = await self.session.call_capability(Builtins.PING, unix_epoch_seconds=start)
+        stop = time.time()
+        round_trip_time = stop - start
+        self.logger.debug(f"Ping round-trip time: {round_trip_time:.6f}s, python-to-ts delay: {python_to_ts_delay:.6f}s, ts-to-python delay: {stop-ts_time:.6f}s")
+
         VERSION: str | None = await self.session.call_capability(Builtins.VERSION)
         self.logger.debug(f"Agent version: {VERSION}")
         UNITY_VERSION: str | None = await self.session.call_capability(Builtins.UNITY_VERSION)
         self.logger.debug(f"Unity version: {UNITY_VERSION}")
-        PING: str | None = await self.session.call_capability(Builtins.PING, msg="test")
-        self.logger.debug(f"Ping response: {PING}")
         render_pipeline: str | None = await self.session.call_capability(Capabilities.GET_CURRENT_RENDER_PIPELINE)
         self.logger.debug(f"getCurrentRenderPipeline response: {render_pipeline}")
         capabilities: dict[str, bool] = await self.session.call_capability(Builtins.CAPABILITIES)
         self.logger.debug(f"Agent capabilities: {capabilities}")
-        INVALID = await self.session.call_capability("invalid_capability")
-        self.logger.debug(f"Invalid capability response: {INVALID}")
         # if self.session.has_capability(Capabilities.GET_CURRENT_RENDER_PIPELINE):
         #     # None here means the built-in render pipeline.
         #     render_pipeline: str | None = await self.session.rpc.get_current_render_pipeline()

@@ -3,7 +3,7 @@
         "Single source of truth for everything crossing the Python <-> agent boundary.",
         "",
         "Type vocabulary: string | int | float | bool | null | any,",
-        "  `T?` for nullable, `list<T>`, `map<K, V>`.",
+        "  `T?` for nullable, `list<T>`, `map<K, V>`, tuple<T1, T2, ...>.",
         "",
         "To add a new function/capability/event, add it to the appropriate section below. The agent will automatically generate the necessary code to handle it."
     ],
@@ -42,10 +42,10 @@
         "PING": {
             "name": "ping",
             "args": [{
-                "name": "msg",
-                "type": "string"
+                "name": "unix_epoch_seconds",
+                "type": "float"
             }],
-            "returns": "string"
+            "returns": "tuple<float, float>"
         }
     },
 

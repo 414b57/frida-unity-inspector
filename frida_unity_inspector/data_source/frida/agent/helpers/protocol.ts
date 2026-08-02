@@ -43,7 +43,7 @@ export interface BuiltinSignatures {
     "capabilities": () => Record<string, boolean> | Promise<Record<string, boolean>>
     "version": () => string | Promise<string>
     "unityVersion": () => string | Promise<string>
-    "ping": (msg: string) => string | Promise<string>
+    "ping": (unix_epoch_seconds: number) => [number, number] | Promise<[number, number]>
 }
 
 /** Helper for sending an event to the Python side with a payload matching the protocol. */

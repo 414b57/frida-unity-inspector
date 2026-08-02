@@ -3438,8 +3438,9 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
         return Il2Cpp.unityVersion;
       };
       detected[Builtins.UNITY_VERSION] = true;
-      exports[Builtins.PING] = (msg) => {
-        return `pong: ${msg}`;
+      exports[Builtins.PING] = (unix_epoch_seconds) => {
+        const now = Date.now() / 1e3;
+        return [now - unix_epoch_seconds, now];
       };
       detected[Builtins.PING] = true;
       console.log("[+] RPC exports:", Object.keys(exports));

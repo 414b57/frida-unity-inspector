@@ -41,7 +41,7 @@ EVENT_DATA_ADAPTERS: dict[Events, TypeAdapter[Any]] = {
 _CAPABILITIES_RETURN: TypeAdapter[Any] = TypeAdapter(dict[str, bool])
 _VERSION_RETURN: TypeAdapter[Any] = TypeAdapter(str)
 _UNITY_VERSION_RETURN: TypeAdapter[Any] = TypeAdapter(str)
-_PING_RETURN: TypeAdapter[Any] = TypeAdapter(str)
+_PING_RETURN: TypeAdapter[Any] = TypeAdapter(tuple[float, float])
 _GET_CURRENT_RENDER_PIPELINE_RETURN: TypeAdapter[Any] = TypeAdapter(str | None)
 
 
@@ -82,8 +82,8 @@ class AgentRpc:
         result = await self._call(Builtins.UNITY_VERSION)
         return _UNITY_VERSION_RETURN.validate_python(result)
 
-    async def ping(self, msg: str) -> str:
-        result = await self._call(Builtins.PING, msg)
+    async def ping(self, unix_epoch_seconds: float) -> tuple[float, float]:
+        result = await self._call(Builtins.PING, unix_epoch_seconds)
         return _PING_RETURN.validate_python(result)
 
     async def get_current_render_pipeline(self) -> str | None:

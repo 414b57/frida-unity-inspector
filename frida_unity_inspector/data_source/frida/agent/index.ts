@@ -59,8 +59,9 @@ function bootstrap() {
         detected[Builtins.UNITY_VERSION] = true
 
         // Ping
-        exports[Builtins.PING] = (msg: string) => {
-            return `pong: ${msg}`
+        exports[Builtins.PING] = (unix_epoch_seconds: number) => {
+            const now = Date.now() / 1000
+            return [now-unix_epoch_seconds, now]
         }
         detected[Builtins.PING] = true
 
