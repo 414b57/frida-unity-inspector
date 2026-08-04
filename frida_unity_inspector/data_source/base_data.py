@@ -11,6 +11,10 @@ LogCallback = Callable[[LogEntry], None]
 class BaseDataSource(ABC):
     """Abstract base class for data sources."""
 
+    @property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger(f"fui.base_data")
+
     def __init__(self) -> None:
         self._log_history: list[LogEntry] = []
         self._log_subscribers: list[LogCallback] = []
@@ -27,13 +31,6 @@ class BaseDataSource(ABC):
     @abstractmethod
     async def status(self) -> Status:
         """Current attach/connection status."""
-
-    @property
-    def logger(self) -> logging.Logger:
-        return logging.getLogger(f"fui.base_data")
-
-    def get_logger(self, subname: str | None = None) -> logging.Logger:
-        return logging.getLogger(f"fui.base_data.{subname}" if subname else "fui.base_data")
 
     # -- reading data --
     @abstractmethod

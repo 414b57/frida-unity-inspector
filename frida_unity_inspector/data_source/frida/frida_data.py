@@ -10,6 +10,7 @@ from .device_resolver import resolve_frida_device
 from .protocol import Capabilities, Builtins
 from frida_unity_inspector.utils import AdbDevice, FridaInjector
 
+import logging
 import time
 import asyncio
 import frida
@@ -24,6 +25,10 @@ class FridaDataSource(BaseDataSource):
     """
     TODO
     """
+    @property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger(f"fui.data_source.frida")
+
     def __init__(self, device: str, package: str, spawn: bool, kill_on_stop: bool) -> None:
         super().__init__()
         # args

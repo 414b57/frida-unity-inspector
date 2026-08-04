@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import datetime
-
+import logging
 from typing import Any
 
 from pydantic import TypeAdapter
@@ -15,6 +15,10 @@ from ..base_data import BaseDataSource, LogCallback
 
 class BasicMockDataSource(BaseDataSource):
     """Basic Mock implementation of BaseData for testing and development."""
+    @property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger(f"fui.data_source.basic_mock")
+
     def __init__(self) -> None:
         super().__init__()
 

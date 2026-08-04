@@ -5,7 +5,9 @@
         "Type vocabulary: string | int | float | bool | null | any,",
         "  `T?` for nullable, `list<T>`, `map<K, V>`, tuple<T1, T2, ...>.",
         "",
-        "To add a new function/capability/event, add it to the appropriate section below. The agent will automatically generate the necessary code to handle it."
+        "To add a new function/capability/event, add it to the appropriate section below. The agent will automatically generate the necessary code to handle it.",
+        "",
+        "TODO - Look into replacing this with something like yaml, so can have comments"
     ],
 
     "message_types": {
