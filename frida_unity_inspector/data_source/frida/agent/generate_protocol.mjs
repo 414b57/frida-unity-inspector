@@ -30,6 +30,7 @@ const PRIMITIVES = {
     bool:   { py: "bool",  ts: "boolean" },
     null:   { py: "None",  ts: "null" },
     any:    { py: "Any",   ts: "unknown" },
+    object: { py: "Any",   ts: "any" },
 };
 
 // Split a type spec's generic arguments, e.g. "map<string, list<int>>" -> ["string", "list<int>"].
@@ -112,11 +113,40 @@ function readCall(sectionName, key, entry) {
         }
         return { name: arg.name, type: parseType(arg.type) };
     });
-    return { key, name: entry.name, args, returns: parseType(entry.returns) };
+    const requires = entry.requires ?? [];
+    if (!Array.isArray(requires) || requires.some((req) => typeof req !== "string")) {
+        throw new Error(`'${where}.requires' must be a list of capability keys`);
+    }
+    if (requires.length > 0 && sectionName !== "capabilities") {
+        throw new Error(`'${where}' cannot declare 'requires' - only capabilities can`);
+    }
+    return { key, name: entry.name, args, returns: parseType(entry.returns), requires };
 }
 
 function readCallSection(name) {
     return Object.entries(section(name)).map(([key, entry]) => readCall(name, key, entry));
+}
+
+function walkRequires(key, trail, byKey, state) {
+    const seen = state.get(key);
+    if (seen === "done") return;
+    if (seen === "visiting") throw new Error(`Cycle in capability requirements - ${[...trail, key].join(" -> ")}`);
+    state.set(key, "visiting");
+    for (const required of byKey.get(key).requires) walkRequires(required, [...trail, key], byKey, state);
+    state.set(key, "done");
+}
+
+function validateRequires(calls) {
+    const byKey = new Map(calls.map((call) => [call.key, call]));
+    for (const call of calls) {
+        for (const required of call.requires) {
+            if (required === call.key) throw new Error(`'capabilities.${call.key}' requires itself`);
+            if (!byKey.has(required)) throw new Error(`'capabilities.${call.key}.requires' names unknown capability '${required}'`);
+        }
+    }
+
+    const state = new Map();
+    for (const call of calls) walkRequires(call.key, [], byKey, state);
 }
 
 const messageTypes = section("message_types");
@@ -128,11 +158,17 @@ const events = Object.entries(section("events")).map(([key, entry]) => {
 });
 const builtins = readCallSection("builtins");
 const capabilities = readCallSection("capabilities");
+validateRequires(capabilities);
+
+// Requirements are declared by key but resolved at runtime by name, so translate once here.
+const capabilityNameByKey = new Map(capabilities.map((call) => [call.key, call.name]));
 
 // Helper functions for converting between python and typescript naming conventions, and for generating event payload type aliases.
 const pascalCase = (key) => key.toLowerCase().replace(/(^|_)([a-z0-9])/g, (_, __, char) => char.toUpperCase());
 const snakeCase = (key) => key.toLowerCase();
 const eventDataAlias = (event) => `${pascalCase(event.key)}Data`;
+
+const tsSignature = (call) => `(${call.args.map((arg) => `${arg.name}: ${arg.type.ts}`).join(", ")}) => ${call.returns.ts} | Promise<${call.returns.ts}>`;
 
 // ---- Python ----------------------------------------------------------------
 /*
@@ -156,6 +192,14 @@ function renderPython() {
         if (members.length === 0) out += "    pass\n";
         for (const [key, value] of members) out += `    ${key} = ${JSON.stringify(value)}\n`;
     }
+
+    out += "\n\n# Capabilities each capability depends on\n";
+    out += "CAPABILITY_REQUIRES: dict[Capabilities, tuple[Capabilities, ...]] = {\n";
+    for (const call of capabilities) {
+        const required = call.requires.map((key) => `Capabilities.${key}`).join(", ");
+        out += `    Capabilities.${call.key}: (${required}${call.requires.length === 1 ? "," : ""}),\n`;
+    }
+    out += "}\n";
 
     out += "\n\n# Event payloads, and their TypeAdapters for validation\n";
     for (const event of events) out += `${eventDataAlias(event)}: TypeAlias = ${event.data.py}\n`;
@@ -216,8 +260,14 @@ function renderTypeScript() {
         out += `export type ${typeName} = (typeof ${constName})[keyof typeof ${constName}]\n`;
     }
 
-    // Implementations start Il2Cpp.perform themselves, so they may return a Promise; frida resolves it before replying.
-    const signature = (call) => `(${call.args.map((arg) => `${arg.name}: ${arg.type.ts}`).join(", ")}) => ${call.returns.ts} | Promise<${call.returns.ts}>`;
+    out += `\n/** Capabilities each capability depends on */`;
+    out += `\nexport const CapabilityRequires: Record<`; // Have to split into 2 lines, otherwise pycharm thinks its real code??
+    out += `CapabilityName, readonly CapabilityName[]> = {\n`;
+    for (const call of capabilities) {
+        const required = call.requires.map((key) => JSON.stringify(capabilityNameByKey.get(key))).join(", ");
+        out += `    ${JSON.stringify(call.name)}: [${required}],\n`;
+    }
+    out += `}\n`;
 
     out += `\n/** Payload shape each event carries. */`;
     out += `\nexport interface EventPayloads {\n`;
@@ -226,11 +276,11 @@ function renderTypeScript() {
 
     out += `\n/** Signature each capability's implementation must have. */`;
     out += `\nexport interface CapabilitySignatures {\n`;
-    for (const call of capabilities) out += `    ${JSON.stringify(call.name)}: ${signature(call)}\n`;
+    for (const call of capabilities) out += `    ${JSON.stringify(call.name)}: ${tsSignature(call)}\n`;
     out += `}\n`;
 
     out += `\nexport interface BuiltinSignatures {\n`;
-    for (const call of builtins) out += `    ${JSON.stringify(call.name)}: ${signature(call)}\n`;
+    for (const call of builtins) out += `    ${JSON.stringify(call.name)}: ${tsSignature(call)}\n`;
     out += `}\n`;
 
     out += `\n/** Helper for sending an event to the Python side with a payload matching the protocol. */\n`;

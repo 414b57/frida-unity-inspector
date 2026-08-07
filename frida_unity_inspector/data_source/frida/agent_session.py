@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from frida_unity_inspector.utils import FridaInjector
 
-from .protocol import EVENT_DATA_ADAPTERS, AgentLoadedData, AgentReadyData, AgentRpc, Capabilities, Events, MessageTypes
+from .protocol import CAPABILITY_REQUIRES, EVENT_DATA_ADAPTERS, AgentLoadedData, AgentReadyData, AgentRpc, Capabilities, Events, MessageTypes
 
 logger = logging.getLogger("fui.frida.agent_session")
 
@@ -47,6 +47,14 @@ class AgentSession:
         """Whether the agent detected `capability` as available. False until the agent is ready."""
         return self.capabilities.get(capability, False)
 
+    def missing_requirements(self, capability: Capabilities | str) -> tuple[Capabilities, ...]:
+        """The capabilities `capability` declares as requirements that the agent reported unavailable. Empty if it has none, or all are met."""
+        try:
+            key = Capabilities(capability)
+        except ValueError:
+            return ()
+        return tuple(required for required in CAPABILITY_REQUIRES.get(key, ()) if not self.has_capability(required))
+
     def register_event_handler(self, event: Events, handler: EventHandler) -> None:
         """Route `event` to `handler`, replacing any existing route for it."""
         self._event_handlers[event] = handler
@@ -55,7 +63,9 @@ class AgentSession:
     def call_capability(self, capability: Capabilities | str, *args: Any, **kwargs: Any) -> Any:
         """Call an agent RPC method, but only if the agent has the given capability."""
         if not self.has_capability(capability):
-            raise RuntimeError(f"Agent does not have capability '{capability}'")
+            missing = self.missing_requirements(capability)
+            reason = f" - it requires {', '.join(missing)}, which the agent does not have" if missing else ""
+            raise RuntimeError(f"Agent does not have capability '{capability}'{reason}")
         return self.rpc.dispatch(capability, *args, **kwargs)
 
     # message routing 

@@ -2,7 +2,7 @@
     "_comment": [
         "Single source of truth for everything crossing the Python <-> agent boundary.",
         "",
-        "Type vocabulary: string | int | float | bool | null | any,",
+        "Type vocabulary: string | int | float | bool | null | any | object,",
         "  `T?` for nullable, `list<T>`, `map<K, V>`, tuple<T1, T2, ...>.",
         "",
         "To add a new function/capability/event, add it to the appropriate section below. The agent will automatically generate the necessary code to handle it.",
@@ -56,6 +56,17 @@
             "name": "getCurrentRenderPipeline",
             "args": [],
             "returns": "string?"
+        },
+        "GET_SCENE_MANAGER": {
+            "name": "getSceneManager",
+            "args": [],
+            "returns": "object"
+        },
+        "GET_CURRENT_SCENE": {
+            "name": "getCurrentScene",
+            "args": [],
+            "returns": "object?",
+            "requires": ["GET_SCENE_MANAGER"]
         }
     }
 }

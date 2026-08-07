@@ -129,6 +129,11 @@ class FridaDataSource(BaseDataSource):
         self.logger.debug(f"getCurrentRenderPipeline response: {render_pipeline}")
         capabilities: dict[str, bool] = await self.session.call_capability(Builtins.CAPABILITIES)
         self.logger.debug(f"Agent capabilities: {capabilities}")
+
+        sceneManager = await self.session.call_capability(Capabilities.GET_SCENE_MANAGER)
+        self.logger.debug(f"getSceneManager response: {sceneManager}")
+        currentScene = await self.session.call_capability(Capabilities.GET_CURRENT_SCENE)
+        self.logger.debug(f"getCurrentScene response: {currentScene}")
         # if self.session.has_capability(Capabilities.GET_CURRENT_RENDER_PIPELINE):
         #     # None here means the built-in render pipeline.
         #     render_pipeline: str | None = await self.session.rpc.get_current_render_pipeline()

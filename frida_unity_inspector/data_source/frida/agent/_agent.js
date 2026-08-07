@@ -3344,15 +3344,6 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
   })(Il2Cpp2 || (Il2Cpp2 = {}));
   globalThis.Il2Cpp = Il2Cpp2;
 
-  // helpers/capability.ts
-  var registry = [];
-  function defineCapability(capability) {
-    registry.push(capability);
-  }
-  function capabilities() {
-    return registry;
-  }
-
   // helpers/protocol.ts
   var MessageTypes = {
     EVENT: "event"
@@ -3368,10 +3359,55 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     PING: "ping"
   };
   var Capabilities = {
-    GET_CURRENT_RENDER_PIPELINE: "getCurrentRenderPipeline"
+    GET_CURRENT_RENDER_PIPELINE: "getCurrentRenderPipeline",
+    GET_SCENE_MANAGER: "getSceneManager",
+    GET_CURRENT_SCENE: "getCurrentScene"
+  };
+  var CapabilityRequires = {
+    "getCurrentRenderPipeline": [],
+    "getSceneManager": [],
+    "getCurrentScene": ["getSceneManager"]
   };
   function sendEvent(event, data) {
     send({ type: MessageTypes.EVENT, event, data });
+  }
+
+  // helpers/capability.ts
+  var registry = [];
+  var registered = /* @__PURE__ */ new Map();
+  function defineCapability(capability) {
+    registry.push(capability);
+    registered.set(capability.name, capability);
+  }
+  function capabilities() {
+    return registry;
+  }
+  function getCapability(name) {
+    const capability = registered.get(name);
+    if (capability === void 0) {
+      throw new Error(`capability '${name}' is not registered - is its module imported in index.ts?`);
+    }
+    return capability.implementation;
+  }
+  function isAvailable(name, resolved) {
+    const cached = resolved.get(name);
+    if (cached !== void 0) return cached;
+    resolved.set(name, false);
+    for (const required of CapabilityRequires[name] ?? []) {
+      if (isAvailable(required, resolved)) continue;
+      console.warn(`[!] capability '${name}' unavailable - requires '${required}'`);
+      return false;
+    }
+    const capability = registered.get(name);
+    const result = capability !== void 0 && capability.detect();
+    resolved.set(name, result);
+    return result;
+  }
+  function resolveAvailability() {
+    const resolved = /* @__PURE__ */ new Map();
+    const snapshot = {};
+    for (const name of Object.keys(CapabilityRequires)) snapshot[name] = isAvailable(name, resolved);
+    return snapshot;
   }
 
   // helpers/resolve.ts
@@ -3403,49 +3439,62 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     }
   });
 
+  // capabilities/getSceneManager.ts
+  function sceneManagerClass() {
+    return klass("UnityEngine.CoreModule", "UnityEngine.SceneManagement.SceneManager");
+  }
+  defineCapability({
+    name: Capabilities.GET_SCENE_MANAGER,
+    detect: () => sceneManagerClass() !== null,
+    implementation: () => Il2Cpp.perform(() => sceneManagerClass())
+  });
+
+  // capabilities/getCurrentScene.ts
+  defineCapability({
+    name: Capabilities.GET_CURRENT_SCENE,
+    detect: () => method("UnityEngine.CoreModule", "UnityEngine.SceneManagement.SceneManager", "GetActiveScene") !== null,
+    implementation: () => Il2Cpp.perform(async () => {
+      const sceneManager = await getCapability(Capabilities.GET_SCENE_MANAGER)();
+      if (sceneManager === null) return null;
+      const getActiveScene = sceneManager.tryMethod("GetActiveScene");
+      if (getActiveScene === null) return null;
+      const scene = getActiveScene.invoke();
+      return scene.box();
+    })
+  });
+
   // index.ts
   function bootstrap() {
     Il2Cpp.perform(() => {
-      console.log("[+] IL2CPP attached");
+      console.log("[+] IL2CPP perform started");
       const exports = rpc.exports;
-      const detected = {};
+      function getCapabilities() {
+        const builtins = Object.fromEntries(Object.values(Builtins).map((name) => [name, true]));
+        const availabilitySnapshot = resolveAvailability();
+        return { ...availabilitySnapshot, ...builtins };
+      }
+      exports[Builtins.CAPABILITIES] = getCapabilities;
+      exports[Builtins.VERSION] = () => {
+        return "0.1.0";
+      };
+      exports[Builtins.UNITY_VERSION] = () => {
+        return Il2Cpp.unityVersion;
+      };
+      exports[Builtins.PING] = (unix_epoch_seconds) => {
+        const now = Date.now() / 1e3;
+        return [now - unix_epoch_seconds, now];
+      };
+      const capabilitySnapshot = getCapabilities();
       for (const capability of capabilities()) {
-        const available = capability.detect();
-        detected[capability.name] = available;
-        if (available) {
+        if (capabilitySnapshot[capability.name]) {
           exports[capability.name] = capability.implementation;
         } else {
           console.warn(`[!] capability '${capability.name}' unavailable`);
         }
       }
-      exports[Builtins.CAPABILITIES] = () => Il2Cpp.perform(() => {
-        const snapshot = {};
-        for (const capability of capabilities()) {
-          snapshot[capability.name] = capability.detect();
-        }
-        snapshot[Builtins.CAPABILITIES] = true;
-        snapshot[Builtins.VERSION] = true;
-        snapshot[Builtins.UNITY_VERSION] = true;
-        snapshot[Builtins.PING] = true;
-        return snapshot;
-      });
-      detected[Builtins.CAPABILITIES] = true;
-      exports[Builtins.VERSION] = () => {
-        return "0.1.0";
-      };
-      detected[Builtins.VERSION] = true;
-      exports[Builtins.UNITY_VERSION] = () => {
-        return Il2Cpp.unityVersion;
-      };
-      detected[Builtins.UNITY_VERSION] = true;
-      exports[Builtins.PING] = (unix_epoch_seconds) => {
-        const now = Date.now() / 1e3;
-        return [now - unix_epoch_seconds, now];
-      };
-      detected[Builtins.PING] = true;
       console.log("[+] RPC exports:", Object.keys(exports));
-      console.log("[+] Capabilities detected:", JSON.stringify(detected));
-      sendEvent(Events.AGENT_READY, detected);
+      console.log("[+] Capabilities detected:", JSON.stringify(capabilitySnapshot));
+      sendEvent(Events.AGENT_READY, capabilitySnapshot);
     });
   }
   setTimeout(bootstrap, 3e3);

@@ -25,8 +25,17 @@ export type BuiltinName = (typeof Builtins)[keyof typeof Builtins]
 
 export const Capabilities = {
     GET_CURRENT_RENDER_PIPELINE: "getCurrentRenderPipeline",
+    GET_SCENE_MANAGER: "getSceneManager",
+    GET_CURRENT_SCENE: "getCurrentScene",
 } as const
 export type CapabilityName = (typeof Capabilities)[keyof typeof Capabilities]
+
+/** Capabilities each capability depends on */
+export const CapabilityRequires: Record<CapabilityName, readonly CapabilityName[]> = {
+    "getCurrentRenderPipeline": [],
+    "getSceneManager": [],
+    "getCurrentScene": ["getSceneManager"],
+}
 
 /** Payload shape each event carries. */
 export interface EventPayloads {
@@ -37,6 +46,8 @@ export interface EventPayloads {
 /** Signature each capability's implementation must have. */
 export interface CapabilitySignatures {
     "getCurrentRenderPipeline": () => string | null | Promise<string | null>
+    "getSceneManager": () => any | Promise<any>
+    "getCurrentScene": () => any | null | Promise<any | null>
 }
 
 export interface BuiltinSignatures {
