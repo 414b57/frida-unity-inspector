@@ -3361,12 +3361,14 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
   var Capabilities = {
     GET_CURRENT_RENDER_PIPELINE: "getCurrentRenderPipeline",
     GET_SCENE_MANAGER: "getSceneManager",
-    GET_CURRENT_SCENE: "getCurrentScene"
+    GET_CURRENT_SCENE: "getCurrentScene",
+    GET_CURRENT_SCENE_HIERARCHY: "getCurrentSceneHierarchy"
   };
   var CapabilityRequires = {
     "getCurrentRenderPipeline": [],
     "getSceneManager": [],
-    "getCurrentScene": ["getSceneManager"]
+    "getCurrentScene": ["getSceneManager"],
+    "getCurrentSceneHierarchy": ["getCurrentScene"]
   };
   function sendEvent(event, data) {
     send({ type: MessageTypes.EVENT, event, data });
@@ -3458,8 +3460,66 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       if (sceneManager === null) return null;
       const getActiveScene = sceneManager.tryMethod("GetActiveScene");
       if (getActiveScene === null) return null;
-      const scene = getActiveScene.invoke();
-      return scene.box();
+      return getActiveScene.invoke();
+    })
+  });
+
+  // capabilities/getCurrentSceneHierarchy.ts
+  function parseGameObjectToHierarchyNode(gameObject) {
+    const id = gameObject.handle.toString();
+    const name = gameObject.tryMethod("get_name")?.invoke().toString() ?? "Unknown-GameObject";
+    const icon = "unknown";
+    const active = gameObject.tryMethod("get_activeSelf")?.invoke() ?? false;
+    const tag = gameObject.tryMethod("get_tag")?.invoke().toString() ?? "Unknown-Tag";
+    const layer = gameObject.tryMethod("get_layer")?.invoke() ?? -1;
+    const transform = gameObject.tryMethod("get_transform")?.invoke() ?? null;
+    const components = [];
+    const children = [];
+    if (transform) {
+      const childCount = transform.tryMethod("get_childCount")?.invoke() ?? 0;
+      for (let i = 0; i < childCount; i++) {
+        const childTransform = transform.tryMethod("GetChild", 1)?.invoke(i) ?? null;
+        if (childTransform) {
+          const childGameObject = childTransform.tryMethod("get_gameObject")?.invoke() ?? null;
+          if (childGameObject) {
+            const childNode = parseGameObjectToHierarchyNode(childGameObject);
+            children.push(childNode);
+          }
+        }
+      }
+    } else {
+      console.warn(`GameObject ${name} has no transform, cannot get children.`);
+    }
+    return {
+      id,
+      name,
+      icon,
+      data: {
+        active,
+        tag,
+        layer,
+        components
+      },
+      children
+    };
+  }
+  defineCapability({
+    name: Capabilities.GET_CURRENT_SCENE_HIERARCHY,
+    detect: () => {
+      return method("UnityEngine.CoreModule", "UnityEngine.SceneManagement.Scene", "GetRootGameObjects") !== null && method("UnityEngine.CoreModule", "UnityEngine.GameObject", "GetComponents", 1) !== null;
+    },
+    implementation: () => Il2Cpp.perform(async () => {
+      const scene = await getCapability(Capabilities.GET_CURRENT_SCENE)();
+      if (scene === null) return null;
+      const getRootGameObjects = scene.tryMethod("GetRootGameObjects");
+      if (getRootGameObjects === void 0) return null;
+      const rootGameObjects = getRootGameObjects.invoke();
+      const hierarchyNodes = [];
+      for (const rootGameObject of rootGameObjects) {
+        const hierarchyNode = parseGameObjectToHierarchyNode(rootGameObject);
+        hierarchyNodes.push(hierarchyNode);
+      }
+      return hierarchyNodes;
     })
   });
 

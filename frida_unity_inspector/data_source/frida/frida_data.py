@@ -121,23 +121,26 @@ class FridaDataSource(BaseDataSource):
         round_trip_time = stop - start
         self.logger.debug(f"Ping round-trip time: {round_trip_time:.6f}s, python-to-ts delay: {python_to_ts_delay:.6f}s, ts-to-python delay: {stop-ts_time:.6f}s")
 
-        VERSION: str | None = await self.session.call_capability(Builtins.VERSION)
-        self.logger.debug(f"Agent version: {VERSION}")
-        UNITY_VERSION: str | None = await self.session.call_capability(Builtins.UNITY_VERSION)
-        self.logger.debug(f"Unity version: {UNITY_VERSION}")
-        render_pipeline: str | None = await self.session.call_capability(Capabilities.GET_CURRENT_RENDER_PIPELINE)
-        self.logger.debug(f"getCurrentRenderPipeline response: {render_pipeline}")
-        capabilities: dict[str, bool] = await self.session.call_capability(Builtins.CAPABILITIES)
-        self.logger.debug(f"Agent capabilities: {capabilities}")
-
-        sceneManager = await self.session.call_capability(Capabilities.GET_SCENE_MANAGER)
-        self.logger.debug(f"getSceneManager response: {sceneManager}")
-        currentScene = await self.session.call_capability(Capabilities.GET_CURRENT_SCENE)
-        self.logger.debug(f"getCurrentScene response: {currentScene}")
+        # VERSION: str | None = await self.session.call_capability(Builtins.VERSION)
+        # self.logger.debug(f"Agent version: {VERSION}")
+        # UNITY_VERSION: str | None = await self.session.call_capability(Builtins.UNITY_VERSION)
+        # self.logger.debug(f"Unity version: {UNITY_VERSION}")
+        # render_pipeline: str | None = await self.session.call_capability(Capabilities.GET_CURRENT_RENDER_PIPELINE)
+        # self.logger.debug(f"getCurrentRenderPipeline response: {render_pipeline}")
+        # capabilities: dict[str, bool] = await self.session.call_capability(Builtins.CAPABILITIES)
+        # self.logger.debug(f"Agent capabilities: {capabilities}")
+        #
+        # sceneManager = await self.session.call_capability(Capabilities.GET_SCENE_MANAGER)
+        # self.logger.debug(f"getSceneManager response: {sceneManager}")
+        # currentScene = await self.session.call_capability(Capabilities.GET_CURRENT_SCENE)
+        # self.logger.debug(f"getCurrentScene response: {currentScene}")
         # if self.session.has_capability(Capabilities.GET_CURRENT_RENDER_PIPELINE):
         #     # None here means the built-in render pipeline.
         #     render_pipeline: str | None = await self.session.rpc.get_current_render_pipeline()
         #     self.logger.debug(f"getCurrentRenderPipeline response: {render_pipeline}")
+
+        currentSceneHierarchy = await self.session.call_capability(Capabilities.GET_CURRENT_SCENE_HIERARCHY)
+        self.logger.debug(f"getCurrentSceneHierarchy response: {currentSceneHierarchy}")
 
     # -- reading data --
     async def get_game_context(self) -> GameContext:

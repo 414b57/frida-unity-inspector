@@ -7,6 +7,7 @@ import {Builtins, Events, sendEvent} from "./helpers/protocol"
 import "./capabilities/getCurrentRenderPipeline"
 import "./capabilities/getSceneManager"
 import "./capabilities/getCurrentScene"
+import "./capabilities/getCurrentSceneHierarchy"
 
 /*
 Design idea:

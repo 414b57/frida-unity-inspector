@@ -60,13 +60,19 @@
         "GET_SCENE_MANAGER": {
             "name": "getSceneManager",
             "args": [],
-            "returns": "object"
+            "returns": "object?"
         },
         "GET_CURRENT_SCENE": {
             "name": "getCurrentScene",
             "args": [],
             "returns": "object?",
             "requires": ["GET_SCENE_MANAGER"]
+        },
+        "GET_CURRENT_SCENE_HIERARCHY": {
+            "name": "getCurrentSceneHierarchy",
+            "args": [],
+            "returns": "object?",
+            "requires": ["GET_CURRENT_SCENE"]
         }
     }
 }

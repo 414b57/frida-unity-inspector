@@ -27,6 +27,7 @@ export const Capabilities = {
     GET_CURRENT_RENDER_PIPELINE: "getCurrentRenderPipeline",
     GET_SCENE_MANAGER: "getSceneManager",
     GET_CURRENT_SCENE: "getCurrentScene",
+    GET_CURRENT_SCENE_HIERARCHY: "getCurrentSceneHierarchy",
 } as const
 export type CapabilityName = (typeof Capabilities)[keyof typeof Capabilities]
 
@@ -35,6 +36,7 @@ export const CapabilityRequires: Record<CapabilityName, readonly CapabilityName[
     "getCurrentRenderPipeline": [],
     "getSceneManager": [],
     "getCurrentScene": ["getSceneManager"],
+    "getCurrentSceneHierarchy": ["getCurrentScene"],
 }
 
 /** Payload shape each event carries. */
@@ -46,8 +48,9 @@ export interface EventPayloads {
 /** Signature each capability's implementation must have. */
 export interface CapabilitySignatures {
     "getCurrentRenderPipeline": () => string | null | Promise<string | null>
-    "getSceneManager": () => any | Promise<any>
+    "getSceneManager": () => any | null | Promise<any | null>
     "getCurrentScene": () => any | null | Promise<any | null>
+    "getCurrentSceneHierarchy": () => any | null | Promise<any | null>
 }
 
 export interface BuiltinSignatures {

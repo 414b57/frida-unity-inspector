@@ -17,7 +17,6 @@ defineCapability({
             const getActiveScene = sceneManager.tryMethod<Il2Cpp.ValueType>("GetActiveScene")
             if (getActiveScene === null) return null
 
-            const scene = getActiveScene.invoke()
-            return scene.box()
+            return getActiveScene.invoke()
         }),
 })

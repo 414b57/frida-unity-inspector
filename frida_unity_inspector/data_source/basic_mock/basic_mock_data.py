@@ -33,7 +33,7 @@ class BasicMockDataSource(BaseDataSource):
 
                         data = GameObjectData(
                             active=True,
-                            is_static=False,
+                            # is_static=False,
                             tag="MainCamera",
                             layer=0,
 
@@ -92,7 +92,7 @@ class BasicMockDataSource(BaseDataSource):
                         icon="light",
                         data = GameObjectData(
                             active=True,
-                            is_static=False,
+                            # is_static=False,
                             tag="Untagged",
                             layer=0,
                             components=[
@@ -141,7 +141,7 @@ class BasicMockDataSource(BaseDataSource):
                         icon="cube",
                         data = GameObjectData(
                             active=True,
-                            is_static=False,
+                            # is_static=False,
                             tag="Untagged",
                             layer=0,
                             components=[
@@ -168,7 +168,7 @@ class BasicMockDataSource(BaseDataSource):
                                 icon="cube",
                                 data = GameObjectData(
                                     active=True,
-                                    is_static=False,
+                                    # is_static=False,
                                     tag="Untagged",
                                     layer=0,
                                     components=[

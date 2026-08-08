@@ -143,7 +143,6 @@ class GameObjectData(BaseModel):
     """The runtime state of a GameObject, including its components."""
 
     active: bool = True
-    is_static: bool = False
     tag: str = "Untagged"
     layer: int = 0
     # Note: Tag's are unlimited. So use str to match. Layers ar limited (0-31). So use int to match.
