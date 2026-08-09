@@ -3465,6 +3465,17 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
   });
 
   // capabilities/getCurrentSceneHierarchy.ts
+  function toNumber(raw) {
+    if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
+    if (typeof raw === "bigint") return Number(raw);
+    try {
+      const underlying = raw.field("value__").value;
+      const n = Number(underlying);
+      return Number.isFinite(n) ? n : null;
+    } catch {
+      return null;
+    }
+  }
   function parseGameObjectToHierarchyNode(gameObject) {
     const id = gameObject.handle.toString();
     const name = gameObject.tryMethod("get_name")?.invoke().toString() ?? "Unknown-GameObject";
@@ -3474,18 +3485,109 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     const layer = gameObject.tryMethod("get_layer")?.invoke() ?? -1;
     const transform = gameObject.tryMethod("get_transform")?.invoke() ?? null;
     const components = [];
+    const componentClass = klass("UnityEngine.CoreModule", "UnityEngine.Component");
+    const behaviourClass = klass("UnityEngine.CoreModule", "UnityEngine.Behaviour");
+    const colliderClass = klass("UnityEngine.PhysicsModule", "UnityEngine.Collider");
+    const rendererClass = klass("UnityEngine.CoreModule", "UnityEngine.Renderer");
+    const getComponentsMethod = gameObject.tryMethod("GetComponents", 0);
+    if (componentClass && getComponentsMethod) {
+      const componentArray = getComponentsMethod.inflate(componentClass).invoke();
+      if (componentArray) {
+        for (const component of componentArray) {
+          const componentClass2 = component.class;
+          const componentId = component.handle.toString();
+          const componentName = component.class.name;
+          const componentType = `${component.class ? component.class.namespace + "." : ""}${component.class.name}`;
+          const componentIcon = "unknown";
+          const componentExpanded = true;
+          let enabled = null;
+          if (behaviourClass && componentClass2.isSubclassOf(behaviourClass, true)) {
+            enabled = component.tryMethod("get_enabled")?.invoke() ?? null;
+          } else if (colliderClass && componentClass2.isSubclassOf(colliderClass, true)) {
+            enabled = component.tryMethod("get_enabled")?.invoke() ?? null;
+          } else if (rendererClass && componentClass2.isSubclassOf(rendererClass, true)) {
+            enabled = component.tryMethod("get_enabled")?.invoke() ?? null;
+          }
+          const componentProperties = [];
+          for (const field of componentClass2.fields) {
+            const fieldStatic = field.isStatic;
+            if (fieldStatic) {
+              continue;
+            }
+            const fieldName = field.name;
+            const fieldType = field.type.name;
+            try {
+              const raw = component.field(field.name).value;
+              switch (fieldType) {
+                case "System.Single":
+                case "System.Double": {
+                  const value2 = toNumber(raw);
+                  componentProperties.push({ label: fieldName, kind: "float", is_static: fieldStatic, read_only: false, value: value2 ?? 0 });
+                  break;
+                }
+                case "System.Int32":
+                case "System.Int64":
+                case "System.UInt32":
+                case "System.UInt64":
+                case "System.Int16":
+                case "System.UInt16":
+                case "System.Byte":
+                case "System.SByte": {
+                  const value2 = toNumber(raw);
+                  componentProperties.push({ label: fieldName, kind: "int", is_static: fieldStatic, read_only: false, value: value2 ?? 0 });
+                  break;
+                }
+                case "System.Boolean":
+                  componentProperties.push({ label: fieldName, kind: "bool", is_static: fieldStatic, read_only: false, value: Boolean(raw) });
+                  break;
+                case "System.String":
+                  componentProperties.push({ label: fieldName, kind: "string", is_static: fieldStatic, read_only: false, value: raw.toString() });
+                  break;
+                case "UnityEngine.Vector3":
+                  const rawVT = raw;
+                  const value = {
+                    x: rawVT.field("x").value,
+                    y: rawVT.field("y").value,
+                    z: rawVT.field("z").value
+                  };
+                  componentProperties.push({ label: fieldName, kind: "vector3", is_static: fieldStatic, read_only: false, value });
+                  break;
+                default: {
+                }
+              }
+            } catch (e) {
+              console.warn(`Failed to read field ${fieldName} of component ${componentName} (${componentType}): ${e}`);
+              continue;
+            }
+          }
+          components.push({
+            id: componentId,
+            name: componentName,
+            type: componentType,
+            icon: componentIcon,
+            enabled,
+            expanded: componentExpanded,
+            properties: componentProperties
+          });
+        }
+      }
+    }
     const children = [];
     if (transform) {
       const childCount = transform.tryMethod("get_childCount")?.invoke() ?? 0;
       for (let i = 0; i < childCount; i++) {
         const childTransform = transform.tryMethod("GetChild", 1)?.invoke(i) ?? null;
-        if (childTransform) {
-          const childGameObject = childTransform.tryMethod("get_gameObject")?.invoke() ?? null;
-          if (childGameObject) {
-            const childNode = parseGameObjectToHierarchyNode(childGameObject);
-            children.push(childNode);
-          }
+        if (!childTransform) {
+          console.warn(`GameObject ${name} has no child at index ${i} despite childCount being ${childCount}.`);
+          continue;
         }
+        const childGameObject = childTransform.tryMethod("get_gameObject")?.invoke() ?? null;
+        if (!childGameObject) {
+          console.warn(`Child transform at index ${i} of GameObject ${name} has no gameObject. what?`);
+          continue;
+        }
+        const childNode = parseGameObjectToHierarchyNode(childGameObject);
+        children.push(childNode);
       }
     } else {
       console.warn(`GameObject ${name} has no transform, cannot get children.`);

@@ -176,7 +176,8 @@ class Component(BaseModel):
 # - Properties -
 class BaseProperty(BaseModel):
     label: str
-    read_only: bool = False
+    is_static: bool = False # Whether the property is static (Singleton) or instance (per object). Static properties are shared across all instances of the component type.
+    read_only: bool = False # Whether the property is read-only. If true, the user cannot edit it. (I.e. Instance ID)
 
 # Basic / Primitive Types
 class IntProperty(BaseProperty):

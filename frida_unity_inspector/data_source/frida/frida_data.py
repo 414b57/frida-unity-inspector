@@ -46,6 +46,10 @@ class FridaDataSource(BaseDataSource):
         self._running = False
 
         # runtime - external state (From agent/unity)
+        self.current_status: Status | None = None
+        self.game_context: GameContext | None = None
+        self.scenes: list[SceneDeclaration] | None = None
+        self.current_scene: Scene | None = None
 
     # -- lifecycle --
     async def start(self) -> None:
@@ -97,6 +101,7 @@ class FridaDataSource(BaseDataSource):
 
     async def status(self) -> Status:
         """TODO"""
+        return self.current_status
 
     # Run
     async def _run(self) -> None:
@@ -139,18 +144,37 @@ class FridaDataSource(BaseDataSource):
         #     render_pipeline: str | None = await self.session.rpc.get_current_render_pipeline()
         #     self.logger.debug(f"getCurrentRenderPipeline response: {render_pipeline}")
 
-        currentSceneHierarchy = await self.session.call_capability(Capabilities.GET_CURRENT_SCENE_HIERARCHY)
-        self.logger.debug(f"getCurrentSceneHierarchy response: {currentSceneHierarchy}")
+        # currentSceneHierarchy = await self.session.call_capability(Capabilities.GET_CURRENT_SCENE_HIERARCHY)
+        # self.logger.debug(f"getCurrentSceneHierarchy response: {currentSceneHierarchy}")
+
+        self.game_context = GameContext(
+            version=await self.session.call_capability(Builtins.VERSION),
+            unity_version=await self.session.call_capability(Builtins.UNITY_VERSION),
+            render_pipeline=await self.session.call_capability(Capabilities.GET_CURRENT_RENDER_PIPELINE)
+        )
+
+        self.current_scene = Scene(
+            name="TODO",
+            roots=await self.session.call_capability(Capabilities.GET_CURRENT_SCENE_HIERARCHY)
+        )
+
+        self.current_status = Status(
+            running=self._running,
+            message="FridaDataSource is running.",
+        )
 
     # -- reading data --
     async def get_game_context(self) -> GameContext:
         """TODO"""
+        return self.game_context
 
     async def get_scenes(self) -> list[SceneDeclaration]:
         """TODO"""
+        return self.scenes
 
     async def get_current_scene(self) -> Scene:
         """TODO"""
+        return self.current_scene
 
     # -- writing data --
     async def set_active(self, object_id: str, active: bool) -> None:

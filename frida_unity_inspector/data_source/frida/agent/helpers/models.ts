@@ -64,11 +64,13 @@ export interface Component {
 
 export interface BaseProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
 }
 
 export interface IntProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "int"
     value: number
@@ -76,6 +78,7 @@ export interface IntProperty {
 
 export interface FloatProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "float"
     value: number
@@ -83,6 +86,7 @@ export interface FloatProperty {
 
 export interface DoubleProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "double"
     value: number
@@ -90,6 +94,7 @@ export interface DoubleProperty {
 
 export interface BoolProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "bool"
     value: boolean
@@ -97,6 +102,7 @@ export interface BoolProperty {
 
 export interface StringProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "string"
     value: string
@@ -104,6 +110,7 @@ export interface StringProperty {
 
 export interface CharProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "char"
     value: string
@@ -111,6 +118,7 @@ export interface CharProperty {
 
 export interface LongProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "long"
     value: number
@@ -118,6 +126,7 @@ export interface LongProperty {
 
 export interface EnumProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "enum"
     options?: string[]
@@ -131,6 +140,7 @@ export interface Vector2 {
 
 export interface Vector2Property {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "vector2"
     value: Vector2
@@ -144,6 +154,7 @@ export interface Vector3 {
 
 export interface Vector3Property {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "vector3"
     value: Vector3
@@ -158,6 +169,7 @@ export interface Vector4 {
 
 export interface Vector4Property {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "vector4"
     value: Vector4
@@ -170,6 +182,7 @@ export interface Vector2Int {
 
 export interface Vector2IntProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "vector2int"
     value: Vector2Int
@@ -183,6 +196,7 @@ export interface Vector3Int {
 
 export interface Vector3IntProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "vector3int"
     value: Vector3Int
@@ -197,6 +211,7 @@ export interface Quaternion {
 
 export interface QuaternionProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "quaternion"
     value: Quaternion
@@ -223,6 +238,7 @@ export interface Matrix4x4 {
 
 export interface Matrix4x4Property {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "matrix4x4"
     value: Matrix4x4
@@ -237,6 +253,7 @@ export interface Rect {
 
 export interface RectProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "rect"
     value: Rect
@@ -251,6 +268,7 @@ export interface RectInt {
 
 export interface RectIntProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "rectint"
     value: RectInt
@@ -263,6 +281,7 @@ export interface Bounds {
 
 export interface BoundsProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "bounds"
     value: Bounds
@@ -275,6 +294,7 @@ export interface BoundsInt {
 
 export interface BoundsIntProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "boundsint"
     value: BoundsInt
@@ -289,6 +309,7 @@ export interface Color {
 
 export interface ColorProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "color"
     value: Color
@@ -303,6 +324,7 @@ export interface Color32 {
 
 export interface Color32Property {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "color32"
     value: Color32
@@ -310,6 +332,7 @@ export interface Color32Property {
 
 export interface GradientProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "gradient"
     value: any
@@ -317,6 +340,7 @@ export interface GradientProperty {
 
 export interface ArrayProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "array"
     value?: any[]
@@ -324,6 +348,7 @@ export interface ArrayProperty {
 
 export interface DictionaryProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "dictionary"
     value?: Record<any, any>
@@ -331,6 +356,7 @@ export interface DictionaryProperty {
 
 export interface ObjectProperty {
     label: string
+    is_static?: boolean
     read_only?: boolean
     kind?: "object"
     value: any
