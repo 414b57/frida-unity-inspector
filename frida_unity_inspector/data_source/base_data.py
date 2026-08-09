@@ -2,11 +2,41 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from typing import Annotated, Any, Callable, Literal, Union
+
+from pydantic import BaseModel, Field
 
 from .models import LogType, IconName, PropertyKind, GameContext, SceneDeclaration, LogEntry, Status, Scene, HierarchyNode, GameObjectData, Component, Property
 
 LogCallback = Callable[[LogEntry], None]
+
+# Data being pushed by a data source to its subscribers (web apps) when game state changes.
+class StatusUpdate(BaseModel):
+    """The data source's connection/attach status has changed."""
+    type: Literal["status"] = "status"
+    status: Status
+
+
+class StructureUpdate(BaseModel):
+    """The (light) hierarchy changed - carries the full new tree, property values omitted."""
+    type: Literal["structure"] = "structure"
+    scene: Scene
+
+class PropertiesUpdate(BaseModel):
+    """Fresh property values for some components, keyed by component id."""
+    type: Literal["properties"] = "properties"
+    components: dict[str, list[Property]] = Field(default_factory=dict)
+
+DataUpdate = Annotated[
+    Union[
+        StatusUpdate,
+        StructureUpdate,
+        PropertiesUpdate,
+    ],
+    Field(discriminator="type")
+]
+
+UpdateCallback = Callable[[DataUpdate], None]
 
 class BaseDataSource(ABC):
     """Abstract base class for data sources."""
@@ -18,6 +48,10 @@ class BaseDataSource(ABC):
     def __init__(self) -> None:
         self._log_history: list[LogEntry] = []
         self._log_subscribers: list[LogCallback] = []
+        self._update_subscribers: list[UpdateCallback] = []
+        # Which components property values should be polled for. None = all of them | a set of component ids = only those
+        # Currently `simple_list` web app wants to update everything. But if implement a unity editor style UI, only update properties for the currently selected obj.
+        self._property_scope: set[str] | None = None
 
     # -- lifecycle --
     @abstractmethod
@@ -59,6 +93,35 @@ class BaseDataSource(ABC):
     @abstractmethod
     async def set_property(self, object_id: str, component_id: str, label: str, value: Any) -> Property:
         """Set a component property's value and return the updated property."""
+
+    # -- update streaming --
+    def set_property_scope(self, component_ids: set[str] | None) -> None:
+        """Limit property polling to `component_ids`. None = poll all components."""
+        self._property_scope = set(component_ids) if component_ids is not None else None
+
+    def subscribe_updates(self, callback: UpdateCallback) -> Callable[[], None]:
+        """Register ``callback`` for future data updates (structure/property changes)."""
+        if callback in self._update_subscribers:
+            self.logger.warning("Attempted to subscribe an update callback that was already subscribed.")
+        else:
+            self._update_subscribers.append(callback)
+
+        return lambda: self.unsubscribe_updates(callback)
+
+    def unsubscribe_updates(self, callback: UpdateCallback) -> None:
+        """Unregister ``callback`` from future data updates."""
+        if callback not in self._update_subscribers:
+            self.logger.warning("Attempted to unsubscribe an update callback that was not subscribed.")
+        else:
+            self._update_subscribers.remove(callback)
+
+    def _emit_update(self, update: DataUpdate) -> None:
+        """Emit a data update to all subscribers."""
+        for callback in self._update_subscribers:
+            try:
+                callback(update)
+            except Exception as e:
+                self.logger.exception("Error in update subscriber callback: %s", e)
 
     # -- log streaming --
     def get_log_history(self) -> list[LogEntry]:

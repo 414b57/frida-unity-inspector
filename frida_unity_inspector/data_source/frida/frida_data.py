@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..models import GameContext, SceneDeclaration, Status, Scene, Property
+from pydantic import TypeAdapter
 
-from ..base_data import BaseDataSource
+from ..models import GameContext, SceneDeclaration, Status, Scene, Property, HierarchyNode
+
+from ..base_data import BaseDataSource, StatusUpdate, StructureUpdate, PropertiesUpdate
 from .agent_session import AgentSession
 from .device_resolver import resolve_frida_device
 from .protocol import Capabilities, Builtins
@@ -20,6 +22,14 @@ CWD = pathlib.Path(__file__).resolve().parent
 AGENT_FILE_PATH = CWD / "agent" / "_agent.js"
 SERVER_FILE = "frida-server-17.8.2-android-arm64"
 SERVER_FILE_PATH = CWD / SERVER_FILE
+
+# Delay between ticks of the run loop. Each tick polls for a light hierarchy structure, then polls for a chunk of property values.
+TICK_INTERVAL_SECONDS = 0.25
+# How many properties to poll per tick. Polling too many properties at once can hitch the game thread, so we do it in chunks.
+PROPS_PER_TICK = 10
+
+_STRUCTURE_ADAPTER: TypeAdapter[list[HierarchyNode]] = TypeAdapter(list[HierarchyNode])
+_PROPS_ADAPTER: TypeAdapter[list[Property]] = TypeAdapter(list[Property])
 
 class FridaDataSource(BaseDataSource):
     """
@@ -49,7 +59,13 @@ class FridaDataSource(BaseDataSource):
         self.current_status: Status | None = None
         self.game_context: GameContext | None = None
         self.scenes: list[SceneDeclaration] | None = None
-        self.current_scene: Scene | None = None
+
+        self._structure: list[HierarchyNode] | None = None # Cache of hierarchy structure, for change detection and property merging
+        self._structure_dump: bytes | None = None  # last serialized structure, if match no changes has occured
+        self._component_props: dict[str, list[Property]] = {} # per-component cached property values, keyed by component id
+        self._component_prop_dumps: dict[str, bytes] = {}  # per-component serialized props, if match no changes has occured
+        self._prop_cycle: list[str] = []  # all component ids in tree order
+        self._prop_cursor = 0  # position within the in-scope components
 
     # -- lifecycle --
     async def start(self) -> None:
@@ -110,58 +126,105 @@ class FridaDataSource(BaseDataSource):
         await self.session.ready.wait()
         self.logger.info("FridaDataSource agent is ready. Starting main loop...")
 
+        try:
+            self.game_context = GameContext(
+                version=await self.session.call_capability(Builtins.VERSION),
+                unity_version=await self.session.call_capability(Builtins.UNITY_VERSION),
+                render_pipeline=await self.session.call_capability(Capabilities.GET_CURRENT_RENDER_PIPELINE)
+            )
+        except Exception as e:
+            self.logger.error(f"Failed to fetch game context: {e}", exc_info=e)
+
         while self._running:
             try:
                 await self._tick()
             except Exception as e:
                 self.logger.error(f"Error in FridaDataSource run loop: {e}\n", exc_info=e)
             finally:
-                await asyncio.sleep(1)
+                await asyncio.sleep(TICK_INTERVAL_SECONDS)
 
     async def _tick(self) -> None:
-        """TODO"""
+        """One poll cycle: refresh the light structure, then one chunk of property values."""
         start = time.time()
         python_to_ts_delay, ts_time = await self.session.call_capability(Builtins.PING, unix_epoch_seconds=start)
         stop = time.time()
         round_trip_time = stop - start
-        self.logger.debug(f"Ping round-trip time: {round_trip_time:.6f}s, python-to-ts delay: {python_to_ts_delay:.6f}s, ts-to-python delay: {stop-ts_time:.6f}s")
 
-        # VERSION: str | None = await self.session.call_capability(Builtins.VERSION)
-        # self.logger.debug(f"Agent version: {VERSION}")
-        # UNITY_VERSION: str | None = await self.session.call_capability(Builtins.UNITY_VERSION)
-        # self.logger.debug(f"Unity version: {UNITY_VERSION}")
-        # render_pipeline: str | None = await self.session.call_capability(Capabilities.GET_CURRENT_RENDER_PIPELINE)
-        # self.logger.debug(f"getCurrentRenderPipeline response: {render_pipeline}")
-        # capabilities: dict[str, bool] = await self.session.call_capability(Builtins.CAPABILITIES)
-        # self.logger.debug(f"Agent capabilities: {capabilities}")
-        #
-        # sceneManager = await self.session.call_capability(Capabilities.GET_SCENE_MANAGER)
-        # self.logger.debug(f"getSceneManager response: {sceneManager}")
-        # currentScene = await self.session.call_capability(Capabilities.GET_CURRENT_SCENE)
-        # self.logger.debug(f"getCurrentScene response: {currentScene}")
-        # if self.session.has_capability(Capabilities.GET_CURRENT_RENDER_PIPELINE):
-        #     # None here means the built-in render pipeline.
-        #     render_pipeline: str | None = await self.session.rpc.get_current_render_pipeline()
-        #     self.logger.debug(f"getCurrentRenderPipeline response: {render_pipeline}")
+        await self._poll_structure() # Qucik poll of the light hierarchy structure, if changed re-key the property and notify subscribers
+        await self._poll_property_chunk() # Then do heavy reflection work on the game thread to fetch property values for the next chunk of in-scope components and notify subscribers of changes
 
-        # currentSceneHierarchy = await self.session.call_capability(Capabilities.GET_CURRENT_SCENE_HIERARCHY)
-        # self.logger.debug(f"getCurrentSceneHierarchy response: {currentSceneHierarchy}")
-
-        self.game_context = GameContext(
-            version=await self.session.call_capability(Builtins.VERSION),
-            unity_version=await self.session.call_capability(Builtins.UNITY_VERSION),
-            render_pipeline=await self.session.call_capability(Capabilities.GET_CURRENT_RENDER_PIPELINE)
-        )
-
-        self.current_scene = Scene(
-            name="TODO",
-            roots=await self.session.call_capability(Capabilities.GET_CURRENT_SCENE_HIERARCHY)
-        )
-
+        finish = time.time()
         self.current_status = Status(
             running=self._running,
-            message="FridaDataSource is running.",
+            message=f"FridaDataSource is running - tick took {finish-start:.6f}s",
         )
+        self.logger.debug(f"Ping round-trip time: {round_trip_time:.6f}s, python-to-ts delay: {python_to_ts_delay:.6f}s, ts-to-python delay: {stop-ts_time:.6f}s, tick took {finish-start:.6f}s")
+        self._emit_update(StatusUpdate(status=self.current_status))
+
+    async def _poll_structure(self) -> None:
+        """Refresh the light hierarchy tree; on change, re-key the property and notify subscribers."""
+        if not self.session.has_capability(Capabilities.GET_HIERARCHY_STRUCTURE): # If cant get hierarchy structure, then no point in polling for it
+            return
+        structure: list[HierarchyNode] | None = await self.session.call_capability(Capabilities.GET_HIERARCHY_STRUCTURE)
+        if structure is None:
+            return
+
+        dump = _STRUCTURE_ADAPTER.dump_json(structure)
+        if dump == self._structure_dump: # If nothing has changed, then no need to re-key the property or notify subscribers
+            return
+
+        self._structure = structure
+        self._structure_dump = dump
+
+        # Re-key the property to the components that exist now.
+        live_ids: list[str] = []
+        def collect(nodes: list[HierarchyNode]) -> None:
+            for node in nodes:
+                for component in node.data.components:
+                    live_ids.append(component.id)
+                collect(node.children)
+        collect(structure)
+        self._prop_cycle = live_ids
+        live_set = set(live_ids)
+
+        for dead_id in [cid for cid in self._component_props if cid not in live_set]: # Remove any cached properties for components that no longer exist in the hierarchy
+            self._component_props.pop(dead_id, None)
+            self._component_prop_dumps.pop(dead_id, None)
+
+        self._emit_update(StructureUpdate(scene=Scene(name="TODO", roots=structure))) # TODO - Get scene name
+
+    async def _poll_property_chunk(self) -> None:
+        """Fetch properties of in-scope components in chunks, to avoid hitching the game thread. Notify subscribers of any changes."""
+        if not self.session.has_capability(Capabilities.GET_COMPONENT_PROPERTIES): # If cant get component properties, then no point in polling for them
+            return
+        scope = self._property_scope
+        targets = [cid for cid in self._prop_cycle if scope is None or cid in scope] # Only poll for properties of components that are in scope (if any). If no scope is set, then poll for all components.
+        if not targets: # If no components are in scope, then no need to poll for properties
+            return
+
+        if self._prop_cursor >= len(targets):
+            self._prop_cursor = 0
+        chunk = [targets[(self._prop_cursor + i) % len(targets)] for i in range(min(PROPS_PER_TICK, len(targets)))]
+        self._prop_cursor = (self._prop_cursor + len(chunk)) % len(targets)
+
+        result: dict[str, list[Property] | None] = await self.session.call_capability(Capabilities.GET_COMPONENT_PROPERTIES, component_ids=chunk)
+
+        changed: dict[str, list[Property]] = {}
+        for component_id, props in result.items():
+            if props is None:
+                # Stale id - the component vanished between the structure walk and now.
+                self._component_props.pop(component_id, None)
+                self._component_prop_dumps.pop(component_id, None)
+                continue
+            dump = _PROPS_ADAPTER.dump_json(props)
+            if dump == self._component_prop_dumps.get(component_id): # If nothing has changed, then no need to notify subscribers
+                continue
+            self._component_props[component_id] = props
+            self._component_prop_dumps[component_id] = dump
+            changed[component_id] = props
+
+        if changed:
+            self._emit_update(PropertiesUpdate(components=changed))
 
     # -- reading data --
     async def get_game_context(self) -> GameContext:
@@ -173,8 +236,20 @@ class FridaDataSource(BaseDataSource):
         return self.scenes
 
     async def get_current_scene(self) -> Scene:
-        """TODO"""
-        return self.current_scene
+        """The current scene: light structure with all property values cached so far merged in. Used during initial load of web app."""
+        if self._structure is None:
+            return Scene(name="TODO", roots=[]) # TODO - Get scene name
+
+        def fill(node: HierarchyNode) -> None:
+            for component in node.data.components:
+                component.properties = list(self._component_props.get(component.id, []))
+            for child in node.children:
+                fill(child)
+
+        roots = [root.model_copy(deep=True) for root in self._structure]
+        for root in roots:
+            fill(root)
+        return Scene(name="TODO", roots=roots) # TODO - Get scene name
 
     # -- writing data --
     async def set_active(self, object_id: str, active: bool) -> None:

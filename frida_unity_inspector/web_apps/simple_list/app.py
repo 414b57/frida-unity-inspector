@@ -16,7 +16,8 @@ from pydantic import BaseModel
 from typing_extensions import override
 
 from ..base_app import BaseWebApp
-from ...data_source import BaseDataSource
+from ..websocket_hub import WebSocketHub
+from ...data_source import BaseDataSource, DataUpdate
 from ...data_source import LogType, IconName, PropertyKind, GameContext, SceneDeclaration, LogEntry, Status, Scene, HierarchyNode, GameObjectData, Component, Property
 
 INDEX_FILE = Path(__file__).resolve().parent / "index.html"
@@ -43,11 +44,20 @@ class SetPropertyRequest(BaseModel):
 
 class SimpleListWebApp(BaseWebApp):
     def __init__(self, datasource: BaseDataSource) -> None:
+        self._hub = WebSocketHub()
         super().__init__(datasource, title="Frida Unity Inspector - Simple List")
+        # Push datasource updates (structure/property changes) to all connected pages.
+        datasource.subscribe_updates(self._on_update)
+
+    def _on_update(self, update: DataUpdate) -> None:
+        self._hub.broadcast_threadsafe(update.model_dump(mode="json"))
 
     def _register_routes(self) -> None:
         # Web page
         self.add_api_route("/", self.index, methods=["GET"])
+
+        # Realtime updates
+        self.add_api_websocket_route("/ws", self.updates_ws)
 
         # API
         self.add_api_route("/api/status", self.status, methods=["GET"])
@@ -62,6 +72,19 @@ class SimpleListWebApp(BaseWebApp):
     # -- pages ------
     async def index(self) -> FileResponse:
         return FileResponse(INDEX_FILE,)
+
+    # -- realtime ---
+    async def updates_ws(self, websocket: WebSocket) -> None:
+        self._hub.bind_loop(asyncio.get_running_loop())
+        await self._hub.connect(websocket)
+        try:
+            while True:
+                # Server-push only; drain (and ignore) anything the client sends.
+                await websocket.receive_text()
+        except WebSocketDisconnect:
+            pass
+        finally:
+            self._hub.disconnect(websocket)
 
     # -- REST API ---
     # - Read -

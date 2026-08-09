@@ -39,6 +39,7 @@ def _load_models():
 models = _load_models()
 
 HierarchyNode = models.HierarchyNode
+Property = models.Property
 
 
 # Spec vocabulary
@@ -99,10 +100,21 @@ CAPABILITIES: list[Call] = [
     Call("GET_CURRENT_SCENE", "getCurrentScene", Any, requires=("GET_SCENE_MANAGER",)),
 
     # Hierarchy
+    # Lightweight tree walk: ids/names/active/tag/layer + component list (id/type/enabled), NO property values.
+    # Cheap to compute. Fetch property values separately per component as needed
     Call(
-        "GET_CURRENT_SCENE_HIERARCHY",
-        "getCurrentSceneHierarchy",
+        "GET_HIERARCHY_STRUCTURE",
+        "getHierarchyStructure",
         Optional[list[HierarchyNode]],
         requires=("GET_CURRENT_SCENE",),
+    ),
+    # Reflection-heavy property scan for a batch of components (ids from the structure walk).
+    # A component id that is unknown/stale maps to None so callers can drop it.
+    Call(
+        "GET_COMPONENT_PROPERTIES",
+        "getComponentProperties",
+        dict[str, Optional[list[Property]]],
+        args=(Arg("component_ids", list[str]),),
+        requires=("GET_HIERARCHY_STRUCTURE",),
     ),
 ]

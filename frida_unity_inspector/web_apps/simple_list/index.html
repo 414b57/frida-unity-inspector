@@ -120,6 +120,7 @@
 <body>
     <h1>Frida Unity Inspector <span class="muted">- Simple List</span></h1>
     <button id="refresh">Refresh</button>
+    <span id="live" class="pill bad" title="WebSocket connection for realtime updates">LIVE: OFF</span>
 
     <section>
         <h2>API Status</h2>
@@ -142,6 +143,11 @@
 
     <script>
         let layerNames = {};
+
+        // Keyed element registries - live updates patch these in place instead of
+        // rebuilding the DOM, so expand/collapse state and in-progress edits survive.
+        const nodeEls = new Map();      // gameobject id -> {details, nameEl, activeCheckbox, metaEl, componentsLabel, componentsWrap, childrenLabel, childrenWrap, summary}
+        const componentEls = new Map(); // component id -> {details, summary, enabledCheckbox, nameEl, typeEl, body, objectId, signature, rows: Map(label -> {row, update})}
 
         async function fetchJson(url) {
             const res = await fetch(url);
@@ -191,13 +197,6 @@
             if (status.message) container.appendChild(el("span", "muted", ` ${status.message}`));
         }
 
-        function pillList(items) {
-            const wrap = el("span");
-            if (!items.length) wrap.appendChild(el("span", "muted", "(none)"));
-            for (const item of items) wrap.appendChild(el("span", "pill", item));
-            return wrap;
-        }
-
         function renderGameContext(container, ctx) {
             container.replaceChildren();
             const list = el("ul");
@@ -207,15 +206,9 @@
                 li.appendChild(valueNode);
                 list.appendChild(li);
             };
-            // row("Name", el("b", null, ctx.name));
             row("Version", el("span", null, ctx.version));
             row("Unity Version", el("span", null, ctx.unity_version));
             row("Render Pipeline", el("span", null, ctx.render_pipeline || "Built-in"));
-            // row("Tags", pillList(ctx.tags));
-            // row("Sorting Layers", pillList(ctx.sorting_layers));
-            // row("Layers", pillList(Object.entries(ctx.layers).map(([i, name]) => `${i}: ${name}`)));
-            // row("Rendering Layers", pillList(ctx.rendering_layers));
-            // row("Declared Scenes", pillList(ctx.scenes.map(s => s.name)));
             container.appendChild(list);
         }
 
@@ -236,6 +229,12 @@
         const MATRIX_FIELDS = [];
         for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) MATRIX_FIELDS.push(`m${r}${c}`);
 
+        // Only write into an input the user is not currently editing.
+        function setInputValue(input, value) {
+            if (document.activeElement === input) return;
+            input.value = value;
+        }
+
         function numberInput(value, isInt) {
             const input = el("input");
             input.type = "number";
@@ -255,7 +254,8 @@
                 wrap.appendChild(input);
             }
             const getValue = () => Object.fromEntries(fields.map(f => [f, isInt ? parseInt(inputs[f].value, 10) : parseFloat(inputs[f].value)]));
-            return { node: wrap, inputs, getValue };
+            const setValue = (value) => { for (const field of fields) setInputValue(inputs[field], value[field]); };
+            return { node: wrap, inputs, getValue, setValue };
         }
 
         function colorCss(kind, value) {
@@ -264,9 +264,10 @@
             return `rgba(${to255(value.r)}, ${to255(value.g)}, ${to255(value.b)}, ${kind === "color" ? value.a : value.a / 255})`;
         }
 
-        // Builds the editor UI for one property. Returns {node, getValue} where
-        // getValue() produces the JSON value to send to the backend (it may throw
-        // for locally-invalid input, e.g. malformed JSON).
+        // Builds the editor UI for one property. Returns {node, getValue, setValue}:
+        // getValue() produces the JSON value to send to the backend (it may throw for
+        // locally-invalid input, e.g. malformed JSON); setValue(value) updates the
+        // inputs in place from a fresh backend value, skipping focused inputs.
         function buildEditor(prop) {
             const kind = prop.kind;
             const isInt = INT_KINDS.has(kind);
@@ -275,12 +276,12 @@
                 const input = el("input");
                 input.type = "checkbox";
                 input.checked = prop.value;
-                return { node: input, getValue: () => input.checked };
+                return { node: input,  getValue: () => input.checked,  setValue: (value) => { if (document.activeElement !== input) input.checked = value; }, };
             }
 
             if (kind === "int" || kind === "long" || kind === "float" || kind === "double") {
                 const input = numberInput(prop.value, isInt);
-                return { node: input, getValue: () => isInt ? parseInt(input.value, 10) : parseFloat(input.value) };
+                return { node: input,  getValue: () => isInt ? parseInt(input.value, 10) : parseFloat(input.value),  setValue: (value) => setInputValue(input, value), };
             }
 
             if (kind === "string" || kind === "char") {
@@ -288,7 +289,7 @@
                 input.type = "text";
                 input.value = prop.value;
                 if (kind === "char") { input.maxLength = 1; input.style.width = "2rem"; }
-                return { node: input, getValue: () => input.value };
+                return { node: input, getValue: () => input.value, setValue: (value) => setInputValue(input, value) };
             }
 
             if (kind === "enum") {
@@ -299,7 +300,7 @@
                     if (option === prop.value) opt.selected = true;
                     select.appendChild(opt);
                 }
-                return { node: select, getValue: () => select.value };
+                return { node: select, getValue: () => select.value, setValue: (value) => setInputValue(select, value) };
             }
 
             if (kind in FIELD_SPECS) {
@@ -317,6 +318,10 @@
                             swatch.style.background = colorCss(kind, value);
                             return value;
                         },
+                        setValue: (value) => {
+                            group.setValue(value);
+                            swatch.style.background = colorCss(kind, value);
+                        },
                     };
                 }
                 return group;
@@ -330,7 +335,11 @@
                     inputs[field] = input;
                     grid.appendChild(input);
                 }
-                return { node: grid, getValue: () => Object.fromEntries(MATRIX_FIELDS.map(f => [f, parseFloat(inputs[f].value)])) };
+                return {
+                    node: grid,
+                    getValue: () => Object.fromEntries(MATRIX_FIELDS.map(f => [f, parseFloat(inputs[f].value)])),
+                    setValue: (value) => { for (const field of MATRIX_FIELDS) setInputValue(inputs[field], value[field]); },
+                };
             }
 
             if (kind === "bounds" || kind === "boundsint") {
@@ -344,14 +353,22 @@
                     groups[key] = group;
                     wrap.appendChild(group.node);
                 }
-                return { node: wrap, getValue: () => Object.fromEntries(keys.map(k => [k, groups[k].getValue()])) };
+                return {
+                    node: wrap,
+                    getValue: () => Object.fromEntries(keys.map(k => [k, groups[k].getValue()])),
+                    setValue: (value) => { for (const key of keys) groups[key].setValue(value[key]); },
+                };
             }
 
             // gradient / array / dictionary / object: edit as raw JSON.
             const input = el("input", "json-input");
             input.type = "text";
             input.value = JSON.stringify(prop.value);
-            return { node: input, getValue: () => JSON.parse(input.value) };
+            return {
+                node: input,
+                getValue: () => JSON.parse(input.value),
+                setValue: (value) => setInputValue(input, JSON.stringify(value)),
+            };
         }
 
         function renderProperty(objectId, componentId, prop) {
@@ -369,10 +386,12 @@
             const editor = buildEditor(prop);
             row.appendChild(editor.node);
 
+            const update = (newProp) => editor.setValue(newProp.value);
+
             const inputs = editor.node.matches("input, select") ? [editor.node] : [...editor.node.querySelectorAll("input, select")];
             if (prop.read_only) {
                 for (const input of inputs) input.disabled = true;
-                return row;
+                return { row, update };
             }
 
             const commit = async () => {
@@ -399,60 +418,120 @@
                 }
             };
             for (const input of inputs) input.addEventListener("change", commit);
-            return row;
+            return { row, update };
         }
 
-        // -- scene tree ------------------------------------------------------
-        function renderComponent(objectId, component) {
+        // -- scene tree (keyed / incremental) --------------------------------
+        // A "signature" captures everything about a property list except the values. matching signatures mean rows can be updated in place, otherwise rebuild.
+        function propsSignature(properties) {
+            return JSON.stringify(properties.map(p => [p.label, p.kind, p.read_only, p.source ?? null, p.options ?? null]));
+        }
+
+        function setComponentProperties(entry, properties) {
+            const signature = propsSignature(properties);
+            if (entry.signature === signature) {
+                for (const prop of properties) entry.rows.get(prop.label)?.update(prop);
+                return;
+            }
+            entry.signature = signature;
+            entry.rows = new Map();
+            entry.body.replaceChildren();
+            if (!properties.length) {
+                entry.body.appendChild(el("div", "muted", "(no properties)"));
+            }
+            for (const prop of properties) {
+                const rendered = renderProperty(entry.objectId, entry.componentId, prop);
+                entry.rows.set(prop.label, rendered);
+                entry.body.appendChild(rendered.row);
+            }
+        }
+
+        function updateComponentHeader(entry, objectId, component) {
+            entry.objectId = objectId;
+            entry.nameEl.textContent = component.name;
+            entry.typeEl.textContent = `  (${component.type})`;
+            const hasToggle = component.enabled !== null && component.enabled !== undefined;
+            entry.enabledCheckbox.style.display = hasToggle ? "" : "none";
+            if (hasToggle && document.activeElement !== entry.enabledCheckbox) {
+                entry.enabledCheckbox.checked = component.enabled;
+            }
+        }
+
+        function createComponent(objectId, component) {
             const details = el("details", "component");
             details.open = component.expanded;
 
             const summary = el("summary");
-            if (component.enabled !== null) {
-                const checkbox = el("input");
-                checkbox.type = "checkbox";
-                checkbox.checked = component.enabled;
-                checkbox.addEventListener("click", (e) => e.stopPropagation());
-                checkbox.addEventListener("change", async () => {
-                    try {
-                        await postJson("/api/set_component_enabled", {
-                            object_id: objectId,
-                            component_id: component.id,
-                            enabled: checkbox.checked,
-                        });
-                        flash(summary, true);
-                    } catch (e) {
-                        checkbox.checked = !checkbox.checked;
-                        summary.title = e.message;
-                        flash(summary, false);
-                    }
-                });
-                summary.appendChild(checkbox);
-                summary.appendChild(document.createTextNode(" "));
-            }
-            summary.appendChild(el("span", null, component.name));
-            summary.appendChild(el("span", "node-meta", `  (${component.type})`));
+            const checkbox = el("input");
+            checkbox.type = "checkbox";
+            checkbox.addEventListener("click", (e) => e.stopPropagation());
+            checkbox.addEventListener("change", async () => {
+                try {
+                    await postJson("/api/set_component_enabled", {
+                        object_id: entry.objectId,
+                        component_id: component.id,
+                        enabled: checkbox.checked,
+                    });
+                    flash(summary, true);
+                } catch (e) {
+                    checkbox.checked = !checkbox.checked;
+                    summary.title = e.message;
+                    flash(summary, false);
+                }
+            });
+            summary.appendChild(checkbox);
+            summary.appendChild(document.createTextNode(" "));
+            const nameEl = el("span", null, component.name);
+            summary.appendChild(nameEl);
+            const typeEl = el("span", "node-meta", `  (${component.type})`);
+            summary.appendChild(typeEl);
             details.appendChild(summary);
 
             const body = el("div", "component-body");
-            if (!component.properties.length) {
-                body.appendChild(el("div", "muted", "(no properties)"));
-            }
-            for (const prop of component.properties) {
-                body.appendChild(renderProperty(objectId, component.id, prop));
-            }
             details.appendChild(body);
-            return details;
+
+            const entry = {
+                details, summary, body, nameEl, typeEl,
+                enabledCheckbox: checkbox,
+                objectId,
+                componentId: component.id,
+                signature: null,
+                rows: new Map(),
+            };
+            componentEls.set(component.id, entry);
+            updateComponentHeader(entry, objectId, component);
+            setComponentProperties(entry, component.properties ?? []);
+            return entry;
         }
 
-        function renderNode(node) {
-            const details = el("details", node.data.active ? "node" : "node inactive");
+        function nodeMetaText(node) {
+            const meta = [`id=${node.id}`];
+            if (node.data.tag !== "Untagged") meta.push(`tag=${node.data.tag}`);
+            const layerName = layerNames[node.data.layer];
+            meta.push(layerName ? `layer=${node.data.layer} (${layerName})` : `layer=${node.data.layer}`);
+            if (node.data.is_static) meta.push("static");
+            if (node.children.length) meta.push(`${node.children.length} child${node.children.length === 1 ? "" : "ren"}`);
+            return `  ${meta.join(" | ")}`;
+        }
+
+        function updateNodeHeader(entry, node) {
+            entry.nameEl.textContent = node.name;
+            entry.metaEl.textContent = nodeMetaText(node);
+            entry.details.classList.toggle("inactive", !node.data.active);
+            if (document.activeElement !== entry.activeCheckbox) {
+                entry.activeCheckbox.checked = node.data.active;
+            }
+            entry.componentsLabel.style.display = node.data.components.length ? "" : "none";
+            entry.childrenLabel.style.display = node.children.length ? "" : "none";
+        }
+
+        function createNode(node) {
+            const details = el("details", "node");
             details.open = true;
 
             const summary = el("summary");
             const activeCheckbox = el("input");
             activeCheckbox.type = "checkbox";
-            activeCheckbox.checked = node.data.active;
             activeCheckbox.title = "Active";
             activeCheckbox.addEventListener("click", (e) => e.stopPropagation());
             activeCheckbox.addEventListener("change", async () => {
@@ -468,44 +547,123 @@
             });
             summary.appendChild(activeCheckbox);
             summary.appendChild(document.createTextNode(" "));
-            summary.appendChild(el("b", null, node.name));
-
-            const meta = [`id=${node.id}`];
-            if (node.data.tag !== "Untagged") meta.push(`tag=${node.data.tag}`);
-            const layerName = layerNames[node.data.layer];
-            meta.push(layerName ? `layer=${node.data.layer} (${layerName})` : `layer=${node.data.layer}`);
-            if (node.data.is_static) meta.push("static");
-            if (node.children.length) meta.push(`${node.children.length} child${node.children.length === 1 ? "" : "ren"}`);
-            summary.appendChild(el("span", "node-meta", `  ${meta.join(" | ")}`));
+            const nameEl = el("b", null, node.name);
+            summary.appendChild(nameEl);
+            const metaEl = el("span", "node-meta", "");
+            summary.appendChild(metaEl);
             details.appendChild(summary);
 
             const body = el("div", "node-body");
-            if (node.data.components.length) {
-                body.appendChild(el("div", "section-label", "Components:"));
-                for (const component of node.data.components) {
-                    body.appendChild(renderComponent(node.id, component));
-                }
-            }
-            if (node.children.length) {
-                body.appendChild(el("div", "section-label", "Children:"));
-                for (const child of node.children) {
-                    body.appendChild(renderNode(child));
-                }
-            }
+            const componentsLabel = el("div", "section-label", "Components:");
+            const componentsWrap = el("div");
+            const childrenLabel = el("div", "section-label", "Children:");
+            const childrenWrap = el("div");
+            body.append(componentsLabel, componentsWrap, childrenLabel, childrenWrap);
             details.appendChild(body);
-            return details;
+
+            const entry = { details, summary, nameEl, metaEl, activeCheckbox, componentsLabel, componentsWrap, childrenLabel, childrenWrap };
+            nodeEls.set(node.id, entry);
+            return entry;
         }
 
-        function renderCurrentScene(container, scene) {
-            container.replaceChildren();
+        // Walks the incomming tree, reuses existing elements and creates missing ones.
+        // Property values only changed when their information is set/included, otherwise not changed/empty.
+        function reconcileNode(node, container, seenNodes, seenComponents, includeProperties) {
+            seenNodes.add(node.id);
+            let entry = nodeEls.get(node.id);
+            if (!entry) entry = createNode(node);
+            updateNodeHeader(entry, node);
+
+            for (const component of node.data.components) {
+                seenComponents.add(component.id);
+                let compEntry = componentEls.get(component.id);
+                if (!compEntry) {
+                    compEntry = createComponent(node.id, component);
+                } else {
+                    updateComponentHeader(compEntry, node.id, component);
+                    if (includeProperties) setComponentProperties(compEntry, component.properties ?? []);
+                }
+                entry.componentsWrap.appendChild(compEntry.details);
+            }
+
+            for (const child of node.children) {
+                reconcileNode(child, entry.childrenWrap, seenNodes, seenComponents, includeProperties);
+            }
+
+            container.appendChild(entry.details);
+        }
+
+        let sceneHeaderName = null;
+        let sceneRootsWrap = null;
+        let sceneEmptyMsg = null;
+
+        function ensureSceneSkeleton() {
+            if (sceneRootsWrap) return;
+            const container = document.getElementById("current-scene");
             container.classList.remove("muted");
+            container.replaceChildren();
             const header = el("div", null, "Scene: ");
-            header.appendChild(el("b", null, scene.name));
-            container.appendChild(header);
-            if (!scene.roots.length) container.appendChild(el("div", "muted", "(empty scene)"));
-            for (const root of scene.roots) container.appendChild(renderNode(root));
+            sceneHeaderName = el("b", null, "");
+            header.appendChild(sceneHeaderName);
+            sceneEmptyMsg = el("div", "muted", "(empty scene)");
+            sceneEmptyMsg.style.display = "none";
+            sceneRootsWrap = el("div");
+            container.append(header, sceneEmptyMsg, sceneRootsWrap);
         }
 
+        function applyScene(scene, includeProperties) {
+            ensureSceneSkeleton();
+            sceneHeaderName.textContent = scene.name;
+            sceneEmptyMsg.style.display = scene.roots.length ? "none" : "";
+
+            const seenNodes = new Set();
+            const seenComponents = new Set();
+            for (const root of scene.roots) {
+                reconcileNode(root, sceneRootsWrap, seenNodes, seenComponents, includeProperties);
+            }
+
+            // Drop elements for anything that no longer exists.
+            for (const [id, entry] of nodeEls) {
+                if (!seenNodes.has(id)) { entry.details.remove(); nodeEls.delete(id); }
+            }
+            for (const [id, entry] of componentEls) {
+                if (!seenComponents.has(id)) { entry.details.remove(); componentEls.delete(id); }
+            }
+        }
+
+        function applyProperties(components) {
+            for (const [componentId, properties] of Object.entries(components)) {
+                const entry = componentEls.get(componentId);
+                if (entry) setComponentProperties(entry, properties);
+            }
+        }
+
+        // -- realtime updates ------------------------------------------------
+        function setLive(on) {
+            const pill = document.getElementById("live");
+            pill.className = `pill ${on ? "ok" : "bad"}`;
+            pill.textContent = on ? "LIVE: ON" : "LIVE: OFF";
+        }
+
+        function connectUpdates() {
+            const proto = location.protocol === "https:" ? "wss" : "ws";
+            const ws = new WebSocket(`${proto}://${location.host}/ws`);
+            ws.onopen = () => setLive(true);
+            ws.onmessage = (event) => {
+                let msg;
+                try { msg = JSON.parse(event.data); } catch { return; }
+                if (msg.type === "status") renderStatus(document.getElementById("status"), msg.status);
+                else if (msg.type === "structure") applyScene(msg.scene, false);
+                else if (msg.type === "properties") applyProperties(msg.components);
+            };
+            ws.onclose = () => {
+                setLive(false);
+                setTimeout(connectUpdates, 1000);
+            };
+            ws.onerror = () => ws.close();
+        }
+
+        // -- initial load ----------------------------------------------------
         async function refresh() {
             const statusEl = document.getElementById("status");
             const ctxEl = document.getElementById("game-context");
@@ -524,8 +682,9 @@
             }
 
             try {
-                renderCurrentScene(sceneEl, await fetchJson("/api/current_scene"));
+                applyScene(await fetchJson("/api/current_scene"), true);
             } catch (e) {
+                sceneRootsWrap = null; // showError blows away the skeleton; rebuild it next time
                 showError(sceneEl, e);
             }
         }
@@ -538,6 +697,7 @@
         document.getElementById("expand-all").addEventListener("click", () => setAllDetails(true));
         document.getElementById("collapse-all").addEventListener("click", () => setAllDetails(false));
         refresh();
+        connectUpdates();
     </script>
 </body>
 </html>

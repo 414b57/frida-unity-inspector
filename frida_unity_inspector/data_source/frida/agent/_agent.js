@@ -3362,13 +3362,15 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     GET_CURRENT_RENDER_PIPELINE: "getCurrentRenderPipeline",
     GET_SCENE_MANAGER: "getSceneManager",
     GET_CURRENT_SCENE: "getCurrentScene",
-    GET_CURRENT_SCENE_HIERARCHY: "getCurrentSceneHierarchy"
+    GET_HIERARCHY_STRUCTURE: "getHierarchyStructure",
+    GET_COMPONENT_PROPERTIES: "getComponentProperties"
   };
   var CapabilityRequires = {
     "getCurrentRenderPipeline": [],
     "getSceneManager": [],
     "getCurrentScene": ["getSceneManager"],
-    "getCurrentSceneHierarchy": ["getCurrentScene"]
+    "getHierarchyStructure": ["getCurrentScene"],
+    "getComponentProperties": ["getHierarchyStructure"]
   };
   function sendEvent(event, data) {
     send({ type: MessageTypes.EVENT, event, data });
@@ -3464,7 +3466,19 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     })
   });
 
-  // capabilities/getCurrentSceneHierarchy.ts
+  // helpers/properties.ts
+  var knownComponents = /* @__PURE__ */ new Map();
+  function rememberComponent(id, component) {
+    knownComponents.set(id, component);
+  }
+  function getKnownComponent(id) {
+    return knownComponents.get(id) ?? null;
+  }
+  function pruneComponents(liveIds) {
+    for (const id of knownComponents.keys()) {
+      if (!liveIds.has(id)) knownComponents.delete(id);
+    }
+  }
   function toNumber(raw) {
     if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
     if (typeof raw === "bigint") return Number(raw);
@@ -3477,6 +3491,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     }
   }
   var VALUE_PARSERS = {
+    // Returns in the property format, as specified within models.ts
     "System.Single": (raw) => ({ kind: "float", value: toNumber(raw) ?? 0 }),
     "System.Double": (raw) => ({ kind: "float", value: toNumber(raw) ?? 0 }),
     "System.Int32": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
@@ -3560,7 +3575,112 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       return properties;
     }
   };
-  function parseGameObjectToHierarchyNode(gameObject) {
+  function parseComponentProperties(component) {
+    const componentClass = component.class;
+    const componentName = componentClass.name;
+    const componentType = `${componentClass.namespace ? componentClass.namespace + "." : ""}${componentClass.name}`;
+    const properties = [];
+    for (const field of componentClass.fields) {
+      if (field.isStatic) {
+        continue;
+      }
+      const parse = VALUE_PARSERS[field.type.name];
+      if (!parse) continue;
+      try {
+        properties.push({
+          label: field.name,
+          is_static: false,
+          read_only: false,
+          source: "field",
+          member: field.name,
+          ...parse(component.field(field.name).value)
+        });
+      } catch (e) {
+        console.warn(`Failed to read field ${field.name} of component ${componentName} (${componentType}): ${e}`);
+      }
+    }
+    const seenLabels = new Set(properties.map((p) => p.label));
+    for (const getter2 of componentClass.methods) {
+      if (getter2.isStatic || getter2.parameterCount !== 0 || !getter2.name.startsWith("get_")) continue;
+      const accessorName = getter2.name.substring(4);
+      if (accessorName.length === 0 || seenLabels.has(accessorName)) continue;
+      const parse = VALUE_PARSERS[getter2.returnType.name];
+      if (!parse) continue;
+      try {
+        const setterName = `set_${accessorName}`;
+        const hasSetter = componentClass.tryMethod(setterName, 1) !== null;
+        properties.push({
+          label: accessorName,
+          is_static: false,
+          read_only: !hasSetter,
+          source: "accessor",
+          getter: getter2.name,
+          setter: hasSetter ? setterName : null,
+          ...parse(component.method(getter2.name, 0).invoke())
+        });
+        seenLabels.add(accessorName);
+      } catch (e) {
+        console.warn(`Failed to invoke getter ${getter2.name} of component ${componentName} (${componentType}): ${e}`);
+      }
+    }
+    const customParser = CUSTOM_COMPONENT_PARSERS[componentType];
+    if (customParser) {
+      try {
+        properties.push(...customParser(component));
+      } catch (e) {
+        console.warn(`Custom property parser for component ${componentName} (${componentType}) failed: ${e}`);
+      }
+    }
+    return properties;
+  }
+
+  // capabilities/getHierarchyStructure.ts
+  function parseComponentsOfGameObject(gameObject, name, seenComponentIds) {
+    const componentClass = klass("UnityEngine.CoreModule", "UnityEngine.Component");
+    const behaviourClass = klass("UnityEngine.CoreModule", "UnityEngine.Behaviour");
+    const colliderClass = klass("UnityEngine.PhysicsModule", "UnityEngine.Collider");
+    const rendererClass = klass("UnityEngine.CoreModule", "UnityEngine.Renderer");
+    const components = [];
+    const getComponentsMethod = gameObject.tryMethod("GetComponents", 0);
+    if (!(componentClass && getComponentsMethod)) {
+      console.warn(`GameObject ${name} has no GetComponents method or Component class, cannot get components.`);
+      return components;
+    }
+    const componentArray = getComponentsMethod.inflate(componentClass).invoke();
+    if (!componentArray) {
+      console.warn(`GameObject ${name} states has componenets, but getcomponents returned null. This is unexpected.`);
+      return components;
+    }
+    for (const component of componentArray) {
+      const componentKlass = component.class;
+      const componentId = component.handle.toString();
+      const componentType = `${componentKlass.namespace ? componentKlass.namespace + "." : ""}${componentKlass.name}`;
+      const componentIcon = "unknown";
+      let enabled = null;
+      if (behaviourClass && componentKlass.isSubclassOf(behaviourClass, true)) {
+        enabled = component.tryMethod("get_enabled")?.invoke() ?? null;
+      } else if (colliderClass && componentKlass.isSubclassOf(colliderClass, true)) {
+        enabled = component.tryMethod("get_enabled")?.invoke() ?? null;
+      } else if (rendererClass && componentKlass.isSubclassOf(rendererClass, true)) {
+        enabled = component.tryMethod("get_enabled")?.invoke() ?? null;
+      }
+      rememberComponent(componentId, component);
+      seenComponentIds.add(componentId);
+      components.push({
+        id: componentId,
+        name: componentKlass.name,
+        type: componentType,
+        icon: componentIcon,
+        enabled,
+        expanded: true,
+        // No way to determine if expanded or not, so default to true
+        properties: []
+        // Filled in by getComponentProperties, not here.
+      });
+    }
+    return components;
+  }
+  function parseGameObjectToStructureNode(gameObject, seenComponentIds) {
     const id = gameObject.handle.toString();
     const name = gameObject.tryMethod("get_name")?.invoke().toString() ?? "Unknown-GameObject";
     const icon = "unknown";
@@ -3568,98 +3688,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     const tag = gameObject.tryMethod("get_tag")?.invoke().toString() ?? "Unknown-Tag";
     const layer = gameObject.tryMethod("get_layer")?.invoke() ?? -1;
     const transform = gameObject.tryMethod("get_transform")?.invoke() ?? null;
-    const components = [];
-    const componentClass = klass("UnityEngine.CoreModule", "UnityEngine.Component");
-    const behaviourClass = klass("UnityEngine.CoreModule", "UnityEngine.Behaviour");
-    const colliderClass = klass("UnityEngine.PhysicsModule", "UnityEngine.Collider");
-    const rendererClass = klass("UnityEngine.CoreModule", "UnityEngine.Renderer");
-    const getComponentsMethod = gameObject.tryMethod("GetComponents", 0);
-    if (componentClass && getComponentsMethod) {
-      const componentArray = getComponentsMethod.inflate(componentClass).invoke();
-      if (componentArray) {
-        for (const component of componentArray) {
-          const componentClass2 = component.class;
-          const componentId = component.handle.toString();
-          const componentName = component.class.name;
-          const componentType = `${component.class ? component.class.namespace + "." : ""}${component.class.name}`;
-          const componentIcon = "unknown";
-          const componentExpanded = true;
-          let enabled = null;
-          if (behaviourClass && componentClass2.isSubclassOf(behaviourClass, true)) {
-            enabled = component.tryMethod("get_enabled")?.invoke() ?? null;
-          } else if (colliderClass && componentClass2.isSubclassOf(colliderClass, true)) {
-            enabled = component.tryMethod("get_enabled")?.invoke() ?? null;
-          } else if (rendererClass && componentClass2.isSubclassOf(rendererClass, true)) {
-            enabled = component.tryMethod("get_enabled")?.invoke() ?? null;
-          }
-          const componentProperties = [];
-          for (const field of componentClass2.fields) {
-            if (field.isStatic) {
-              continue;
-            }
-            const parse = VALUE_PARSERS[field.type.name];
-            if (!parse) continue;
-            try {
-              componentProperties.push({
-                label: field.name,
-                is_static: false,
-                read_only: false,
-                source: "field",
-                member: field.name,
-                ...parse(component.field(field.name).value)
-              });
-            } catch (e) {
-              console.warn(`Failed to read field ${field.name} of component ${componentName} (${componentType}): ${e}`);
-            }
-          }
-          const seenLabels = new Set(componentProperties.map((p) => p.label));
-          for (const getter2 of componentClass2.methods) {
-            if (getter2.isStatic || getter2.parameterCount !== 0 || !getter2.name.startsWith("get_")) continue;
-            const accessorName = getter2.name.substring(4);
-            if (accessorName.length === 0 || seenLabels.has(accessorName)) continue;
-            const parse = VALUE_PARSERS[getter2.returnType.name];
-            if (!parse) continue;
-            try {
-              const setterName = `set_${accessorName}`;
-              const hasSetter = componentClass2.tryMethod(setterName, 1) !== null;
-              componentProperties.push({
-                label: accessorName,
-                is_static: false,
-                read_only: !hasSetter,
-                source: "accessor",
-                getter: getter2.name,
-                setter: hasSetter ? setterName : null,
-                ...parse(component.method(getter2.name, 0).invoke())
-              });
-              seenLabels.add(accessorName);
-            } catch (e) {
-              console.warn(`Failed to invoke getter ${getter2.name} of component ${componentName} (${componentType}): ${e}`);
-            }
-          }
-          const customParser = CUSTOM_COMPONENT_PARSERS[componentType];
-          if (customParser) {
-            try {
-              componentProperties.push(...customParser(component));
-            } catch (e) {
-              console.warn(`Custom property parser for component ${componentName} (${componentType}) failed: ${e}`);
-            }
-          }
-          components.push({
-            id: componentId,
-            name: componentName,
-            type: componentType,
-            icon: componentIcon,
-            enabled,
-            expanded: componentExpanded,
-            properties: componentProperties
-          });
-        }
-      } else {
-        console.warn(`GameObject ${name} states has componenets, but getcomponents returned null. This is unexpected.`);
-      }
-    } else {
-      console.warn(`GameObject ${name} has no GetComponents method or Component class, cannot get components.`);
-    }
+    const components = parseComponentsOfGameObject(gameObject, name, seenComponentIds);
     const children = [];
     if (transform) {
       const childCount = transform.tryMethod("get_childCount")?.invoke() ?? 0;
@@ -3674,8 +3703,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
           console.warn(`Child transform at index ${i} of GameObject ${name} has no gameObject. what?`);
           continue;
         }
-        const childNode = parseGameObjectToHierarchyNode(childGameObject);
-        children.push(childNode);
+        children.push(parseGameObjectToStructureNode(childGameObject, seenComponentIds));
       }
     } else {
       console.warn(`GameObject ${name} has no transform, cannot get children.`);
@@ -3694,7 +3722,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     };
   }
   defineCapability({
-    name: Capabilities.GET_CURRENT_SCENE_HIERARCHY,
+    name: Capabilities.GET_HIERARCHY_STRUCTURE,
     detect: () => {
       return method("UnityEngine.CoreModule", "UnityEngine.SceneManagement.Scene", "GetRootGameObjects") !== null && method("UnityEngine.CoreModule", "UnityEngine.GameObject", "GetComponents", 1) !== null;
     },
@@ -3704,12 +3732,38 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       const getRootGameObjects = scene.tryMethod("GetRootGameObjects");
       if (getRootGameObjects === void 0) return null;
       const rootGameObjects = getRootGameObjects.invoke();
-      const hierarchyNodes = [];
+      const seenComponentIds = /* @__PURE__ */ new Set();
+      const structure = [];
       for (const rootGameObject of rootGameObjects) {
-        const hierarchyNode = parseGameObjectToHierarchyNode(rootGameObject);
-        hierarchyNodes.push(hierarchyNode);
+        structure.push(parseGameObjectToStructureNode(rootGameObject, seenComponentIds));
       }
-      return hierarchyNodes;
+      pruneComponents(seenComponentIds);
+      return structure;
+    })
+  });
+
+  // capabilities/getComponentProperties.ts
+  defineCapability({
+    name: Capabilities.GET_COMPONENT_PROPERTIES,
+    detect: () => {
+      return klass("UnityEngine.CoreModule", "UnityEngine.Component") !== null;
+    },
+    implementation: (componentIds) => Il2Cpp.perform(() => {
+      const result = {};
+      for (const componentId of componentIds) {
+        const component = getKnownComponent(componentId);
+        if (component === null) {
+          result[componentId] = null;
+          continue;
+        }
+        try {
+          result[componentId] = parseComponentProperties(component);
+        } catch (e) {
+          console.warn(`Failed to read properties of component ${componentId}: ${e}`);
+          result[componentId] = null;
+        }
+      }
+      return result;
     })
   });
 

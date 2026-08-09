@@ -1,5 +1,5 @@
 /* AUTO-GENERATED from ../../protocol_spec.py + ../../../models.py - do not edit by hand. */
-import type { HierarchyNode } from "./models"
+import type { HierarchyNode, Property } from "./models"
 
 export const MessageTypes = {
     EVENT: "event",
@@ -24,7 +24,8 @@ export const Capabilities = {
     GET_CURRENT_RENDER_PIPELINE: "getCurrentRenderPipeline",
     GET_SCENE_MANAGER: "getSceneManager",
     GET_CURRENT_SCENE: "getCurrentScene",
-    GET_CURRENT_SCENE_HIERARCHY: "getCurrentSceneHierarchy",
+    GET_HIERARCHY_STRUCTURE: "getHierarchyStructure",
+    GET_COMPONENT_PROPERTIES: "getComponentProperties",
 } as const
 export type CapabilityName = (typeof Capabilities)[keyof typeof Capabilities]
 
@@ -33,7 +34,8 @@ export const CapabilityRequires: Record<CapabilityName, readonly CapabilityName[
     "getCurrentRenderPipeline": [],
     "getSceneManager": [],
     "getCurrentScene": ["getSceneManager"],
-    "getCurrentSceneHierarchy": ["getCurrentScene"],
+    "getHierarchyStructure": ["getCurrentScene"],
+    "getComponentProperties": ["getHierarchyStructure"],
 }
 
 /** Payload shape each event carries. */
@@ -47,7 +49,8 @@ export interface CapabilitySignatures {
     "getCurrentRenderPipeline": () => string | null | Promise<string | null>
     "getSceneManager": () => any | Promise<any>
     "getCurrentScene": () => any | Promise<any>
-    "getCurrentSceneHierarchy": () => HierarchyNode[] | null | Promise<HierarchyNode[] | null>
+    "getHierarchyStructure": () => HierarchyNode[] | null | Promise<HierarchyNode[] | null>
+    "getComponentProperties": (component_ids: string[]) => Record<string, Property[] | null> | Promise<Record<string, Property[] | null>>
 }
 
 export interface BuiltinSignatures {
