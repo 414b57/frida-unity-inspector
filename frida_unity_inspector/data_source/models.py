@@ -34,6 +34,7 @@ class PropertyKind(str, Enum):
 
     # Basic / Primitive Types
     INT = "int"
+    SINGLE = "single"
     FLOAT = "float"
     DOUBLE = "double"
     BOOL = "bool"
@@ -196,6 +197,10 @@ class BaseProperty(BaseModel):
 class IntProperty(BaseProperty):
     kind: Literal[PropertyKind.INT] = PropertyKind.INT
     value: int
+
+class SingleProperty(BaseProperty):
+    kind: Literal[PropertyKind.SINGLE] = PropertyKind.SINGLE
+    value: float
 
 class FloatProperty(BaseProperty):
     kind: Literal[PropertyKind.FLOAT] = PropertyKind.FLOAT
@@ -370,6 +375,7 @@ Property = Annotated[
     Union[
         # Basic / Primitive Types
         IntProperty,
+        SingleProperty,
         FloatProperty,
         DoubleProperty,
         BoolProperty,
