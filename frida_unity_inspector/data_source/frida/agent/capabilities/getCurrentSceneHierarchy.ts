@@ -18,6 +18,112 @@ function toNumber(raw: unknown): number | null {
     }
 }
 
+type ParsedValue =
+    | { kind: "float" | "int"; value: number }
+    | { kind: "bool"; value: boolean }
+    | { kind: "string"; value: string }
+    | { kind: "vector3"; value: Vector3 }
+
+const VALUE_PARSERS: Record<string, (raw: unknown) => ParsedValue> = {
+    "System.Single": (raw) => ({ kind: "float", value: toNumber(raw) ?? 0 }),
+    "System.Double": (raw) => ({ kind: "float", value: toNumber(raw) ?? 0 }),
+    "System.Int32": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Int64": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.UInt32": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.UInt64": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Int16": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.UInt16": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Byte": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.SByte": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Boolean": (raw) => ({ kind: "bool", value: Boolean(raw) }),
+    "System.String": (raw) => ({ kind: "string", value: (raw as Il2Cpp.String).toString() }),
+    "UnityEngine.Vector3": (raw) => {
+        const rawVT = raw as Il2Cpp.ValueType
+        return {
+            kind: "vector3",
+            value: {
+                x: rawVT.field<number>("x").value,
+                y: rawVT.field<number>("y").value,
+                z: rawVT.field<number>("z").value,
+            },
+        }
+    },
+}
+
+// TODO - IMPROVE - Make it so we can do subclasses i.e. `UnityEngine.Renderer`/`UnityEngine.Collider` so dont have to write a custom parser for every single subclass of those. (e.g. MeshRenderer, BoxCollider, etc.)
+const CUSTOM_COMPONENT_PARSERS: Record<string, (component: Il2Cpp.Object) => Property[]> = {
+    // "UnityEngine.Transform": (component) => [...],
+    "UnityEngine.MeshRenderer": component => {
+        const properties: Property[] = []
+
+        /// UnityEngine.Renderer properties
+        // SortingLayerID
+        const sortingLayerID = component.tryMethod<number>("get_sortingLayerID")?.invoke() ?? null
+        if (sortingLayerID !== null) {
+            properties.push({
+                label: "Sorting Layer ID",
+                is_static: false,
+                read_only: true,
+                source: "accessor",
+                getter: "get_sortingLayerID",
+                setter: null,
+                kind: "int",
+                value: sortingLayerID,
+            })
+        }
+
+        // SortingOrder
+        const sortingOrder = component.tryMethod<number>("get_sortingOrder")?.invoke() ?? null
+        if (sortingOrder !== null) {
+            properties.push({
+                label: "Sorting Order",
+                is_static: false,
+                read_only: true,
+                source: "accessor",
+                getter: "get_sortingOrder",
+                setter: null,
+                kind: "int",
+                value: sortingOrder,
+            })
+        }
+
+        // SortingGroupID
+        const sortingGroupID = component.tryMethod<number>("get_sortingGroupID")?.invoke() ?? null
+        if (sortingGroupID !== null) {
+            properties.push({
+                label: "Sorting Group ID",
+                is_static: false,
+                read_only: true,
+                source: "accessor",
+                getter: "get_sortingGroupID",
+                setter: null,
+                kind: "int",
+                value: sortingGroupID,
+            })
+        }
+
+        // SortingGroupOrder
+        const sortingGroupOrder = component.tryMethod<number>("get_sortingGroupOrder")?.invoke() ?? null
+        if (sortingGroupOrder !== null) {
+            properties.push({
+                label: "Sorting Group Order",
+                is_static: false,
+                read_only: true,
+                source: "accessor",
+                getter: "get_sortingGroupOrder",
+                setter: null,
+                kind: "int",
+                value: sortingGroupOrder,
+            })
+        }
+
+        /// UnityEngine.MeshRenderer specific properties
+        // This has no specific props. Only default.
+
+        return properties
+    }
+}
+
 function parseGameObjectToHierarchyNode(gameObject: Il2Cpp.Object): HierarchyNode {
     // Hierarchy Node
     const id = gameObject.handle.toString()
@@ -31,7 +137,7 @@ function parseGameObjectToHierarchyNode(gameObject: Il2Cpp.Object): HierarchyNod
     const transform = gameObject.tryMethod<Il2Cpp.Object>("get_transform")?.invoke() ?? null
 
     // TODO - Componennts
-    const components: Component[] = [] // TODO: Implement component parsing
+    const components: Component[] = [] // TODO: Implement better component parsing
 
     const componentClass = klass("UnityEngine.CoreModule", "UnityEngine.Component")
 
@@ -63,61 +169,67 @@ function parseGameObjectToHierarchyNode(gameObject: Il2Cpp.Object): HierarchyNod
                 }
                 // console.log(`Component ${componentName} (${componentType}) enabled state: ${enabled} (subclass of Behaviour: ${behaviourClass && componentClass.isSubclassOf(behaviourClass, true)}, subclass of Collider: ${colliderClass && componentClass.isSubclassOf(colliderClass, true)}, subclass of Renderer: ${rendererClass && componentClass.isSubclassOf(rendererClass, true)})`)
 
-                const componentProperties: Property[] = [] // TODO - Below has basic field reading, look into custom handlers for stuff. i.e. transform doesnt have fields but still has `get_position`/`get_localEulerAngles`/`get_localScale` etc. so can custom parse it
+                const componentProperties: Property[] = [] // TODO - IMPROVE - Sub functions, etc.
+
+                // Field-backed properties.
                 for (const field of componentClass.fields) {
-                    const fieldStatic = field.isStatic
-                    if (fieldStatic) {
+                    if (field.isStatic) {
                         continue // TODO - Implement support for static. rn does `04:36:43.983  WARNING   fui.utils.frida_injector   [agent] Failed to read field kMinAperture of component "Main Camera" (Camera): Il2CppError: couldn't find non-static field kMinAperture in hierarchy of class UnityEngine.Camera`
                     }
-                    const fieldName = field.name
-                    const fieldType = field.type.name
+                    const parse = VALUE_PARSERS[field.type.name]
+                    if (!parse) continue
 
                     try {
-                        const raw = component.field(field.name).value
-                        switch (fieldType) {
-                            case "System.Single":
-                            case "System.Double": {
-                                const value = toNumber(raw)
-                                componentProperties.push({ label: fieldName, kind: "float", is_static: fieldStatic, read_only: false, value: value ?? 0 })
-                                break
-                            }
-                            case "System.Int32":
-                            case "System.Int64":
-                            case "System.UInt32":
-                            case "System.UInt64":
-                            case "System.Int16":
-                            case "System.UInt16":
-                            case "System.Byte":
-                            case "System.SByte": {
-                                const value = toNumber(raw)
-                                componentProperties.push({ label: fieldName, kind: "int", is_static: fieldStatic, read_only: false, value: value ?? 0 })
-                                break
-                            }
-                            case "System.Boolean":
-                                componentProperties.push({ label: fieldName, kind: "bool", is_static: fieldStatic, read_only: false, value: Boolean(raw) })
-                                break
-                            case "System.String":
-                                componentProperties.push({ label: fieldName, kind: "string", is_static: fieldStatic, read_only: false, value: (raw as Il2Cpp.String).toString() })
-                                break
-                            case "UnityEngine.Vector3":
-                                const rawVT: Il2Cpp.ValueType = raw as Il2Cpp.ValueType
-                                const value: Vector3 = {
-                                    x: rawVT.field<number>("x").value,
-                                    y: rawVT.field<number>("y").value,
-                                    z: rawVT.field<number>("z").value
-                                }
-                                componentProperties.push({ label: fieldName, kind: "vector3", is_static: fieldStatic, read_only: false, value: value })
-                                break
-                            default: {
-                                // console.log(`Skipping field ${fieldName} of component ${componentName} (${componentType}) with unsupported type ${fieldType}`)
-                            }
-                        }
+                        componentProperties.push({
+                            label: field.name,
+                            is_static: false,
+                            read_only: false,
+                            source: "field",
+                            member: field.name,
+                            ...parse(component.field(field.name).value),
+                        })
                     } catch (e) {
-                        console.warn(`Failed to read field ${fieldName} of component ${componentName} (${componentType}): ${e}`)
-                        continue
+                        console.warn(`Failed to read field ${field.name} of component ${componentName} (${componentType}): ${e}`)
                     }
+                }
 
+                // Accessor-backed properties (get_X/set_X method pairs).
+                // (e.g. Transform only exposes position/rotation/scale through accessors).
+                const seenLabels = new Set(componentProperties.map((p) => p.label))
+                for (const getter of componentClass.methods) {
+                    if (getter.isStatic || getter.parameterCount !== 0 || !getter.name.startsWith("get_")) continue
+                    const accessorName = getter.name.substring(4)
+                    // console.log(`Component ${componentName} (${componentType}) has accessor: ${accessorName}`)
+                    if (accessorName.length === 0 || seenLabels.has(accessorName)) continue
+                    const parse = VALUE_PARSERS[getter.returnType.name]
+                    if (!parse) continue // Only invoke getters whose result we can actually render.
 
+                    try {
+                        const setterName = `set_${accessorName}`
+                        const hasSetter = componentClass.tryMethod(setterName, 1) !== null
+                        componentProperties.push({
+                            label: accessorName,
+                            is_static: false,
+                            read_only: !hasSetter,
+                            source: "accessor",
+                            getter: getter.name,
+                            setter: hasSetter ? setterName : null,
+                            ...parse(component.method(getter.name, 0).invoke()),
+                        })
+                        seenLabels.add(accessorName)
+                    } catch (e) {
+                        console.warn(`Failed to invoke getter ${getter.name} of component ${componentName} (${componentType}): ${e}`)
+                    }
+                }
+
+                // Component-specific custom properties (synthetic values, oddly-named members, multi-call reads)
+                const customParser = CUSTOM_COMPONENT_PARSERS[componentType]
+                if (customParser) {
+                    try {
+                        componentProperties.push(...customParser(component))
+                    } catch (e) {
+                        console.warn(`Custom property parser for component ${componentName} (${componentType}) failed: ${e}`)
+                    }
                 }
 
                 components.push({
@@ -131,7 +243,11 @@ function parseGameObjectToHierarchyNode(gameObject: Il2Cpp.Object): HierarchyNod
                     properties: componentProperties,
                 })
             }
+        } else {
+            console.warn(`GameObject ${name} states has componenets, but getcomponents returned null. This is unexpected.`)
         }
+    } else {
+        console.warn(`GameObject ${name} has no GetComponents method or Component class, cannot get components.`)
     }
 
     // Recursively get and parse children

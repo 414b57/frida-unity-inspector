@@ -67,6 +67,13 @@ class PropertyKind(str, Enum):
     # Object / Reference Types
     OBJECT = "object"
 
+class PropertySource(str, Enum):
+    """What backs a property on the native side. Determines how a value is read, and how an edit gets written back."""
+
+    FIELD = "field" # A real il2cpp field. Read/write directly through the field.
+    ACCESSOR = "accessor" # A C# property (get_X/set_X methods). Used when the backing field was stripped or never existed (e.g. Transform position). Write = invoke set_X.
+    SYNTHETIC = "synthetic" # Fabricated by the inspector (computed/aggregated). No single native member behind it, so not writable without a custom handler.
+
 # -- Static --
 class GameContext(BaseModel):
     """Static metadata about the inspected Unity game.
@@ -178,6 +185,12 @@ class BaseProperty(BaseModel):
     label: str
     is_static: bool = False # Whether the property is static (Singleton) or instance (per object). Static properties are shared across all instances of the component type.
     read_only: bool = False # Whether the property is read-only. If true, the user cannot edit it. (I.e. Instance ID)
+
+    source: PropertySource = PropertySource.FIELD # What backs this property natively - see PropertySource.
+    member: Optional[str] = None # FIELD only: native field name used for read/write-back. None = same as label.
+    getter: Optional[str] = None # ACCESSOR only: exact method name that reads the value. Usually "get_<label>", but not always (renamed/obfuscated methods).
+    setter: Optional[str] = None # ACCESSOR only: exact method name that writes the value. None = no setter -> not writable.
+    # SYNTHETIC leaves member/getter/setter as None - reads (and any writes) go through the agent's per-component custom handlers instead.
 
 # Basic / Primitive Types
 class IntProperty(BaseProperty):

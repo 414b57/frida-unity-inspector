@@ -3476,6 +3476,90 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       return null;
     }
   }
+  var VALUE_PARSERS = {
+    "System.Single": (raw) => ({ kind: "float", value: toNumber(raw) ?? 0 }),
+    "System.Double": (raw) => ({ kind: "float", value: toNumber(raw) ?? 0 }),
+    "System.Int32": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Int64": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.UInt32": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.UInt64": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Int16": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.UInt16": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Byte": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.SByte": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Boolean": (raw) => ({ kind: "bool", value: Boolean(raw) }),
+    "System.String": (raw) => ({ kind: "string", value: raw.toString() }),
+    "UnityEngine.Vector3": (raw) => {
+      const rawVT = raw;
+      return {
+        kind: "vector3",
+        value: {
+          x: rawVT.field("x").value,
+          y: rawVT.field("y").value,
+          z: rawVT.field("z").value
+        }
+      };
+    }
+  };
+  var CUSTOM_COMPONENT_PARSERS = {
+    // "UnityEngine.Transform": (component) => [...],
+    "UnityEngine.MeshRenderer": (component) => {
+      const properties = [];
+      const sortingLayerID = component.tryMethod("get_sortingLayerID")?.invoke() ?? null;
+      if (sortingLayerID !== null) {
+        properties.push({
+          label: "Sorting Layer ID",
+          is_static: false,
+          read_only: true,
+          source: "accessor",
+          getter: "get_sortingLayerID",
+          setter: null,
+          kind: "int",
+          value: sortingLayerID
+        });
+      }
+      const sortingOrder = component.tryMethod("get_sortingOrder")?.invoke() ?? null;
+      if (sortingOrder !== null) {
+        properties.push({
+          label: "Sorting Order",
+          is_static: false,
+          read_only: true,
+          source: "accessor",
+          getter: "get_sortingOrder",
+          setter: null,
+          kind: "int",
+          value: sortingOrder
+        });
+      }
+      const sortingGroupID = component.tryMethod("get_sortingGroupID")?.invoke() ?? null;
+      if (sortingGroupID !== null) {
+        properties.push({
+          label: "Sorting Group ID",
+          is_static: false,
+          read_only: true,
+          source: "accessor",
+          getter: "get_sortingGroupID",
+          setter: null,
+          kind: "int",
+          value: sortingGroupID
+        });
+      }
+      const sortingGroupOrder = component.tryMethod("get_sortingGroupOrder")?.invoke() ?? null;
+      if (sortingGroupOrder !== null) {
+        properties.push({
+          label: "Sorting Group Order",
+          is_static: false,
+          read_only: true,
+          source: "accessor",
+          getter: "get_sortingGroupOrder",
+          setter: null,
+          kind: "int",
+          value: sortingGroupOrder
+        });
+      }
+      return properties;
+    }
+  };
   function parseGameObjectToHierarchyNode(gameObject) {
     const id = gameObject.handle.toString();
     const name = gameObject.tryMethod("get_name")?.invoke().toString() ?? "Unknown-GameObject";
@@ -3510,54 +3594,54 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
           }
           const componentProperties = [];
           for (const field of componentClass2.fields) {
-            const fieldStatic = field.isStatic;
-            if (fieldStatic) {
+            if (field.isStatic) {
               continue;
             }
-            const fieldName = field.name;
-            const fieldType = field.type.name;
+            const parse = VALUE_PARSERS[field.type.name];
+            if (!parse) continue;
             try {
-              const raw = component.field(field.name).value;
-              switch (fieldType) {
-                case "System.Single":
-                case "System.Double": {
-                  const value2 = toNumber(raw);
-                  componentProperties.push({ label: fieldName, kind: "float", is_static: fieldStatic, read_only: false, value: value2 ?? 0 });
-                  break;
-                }
-                case "System.Int32":
-                case "System.Int64":
-                case "System.UInt32":
-                case "System.UInt64":
-                case "System.Int16":
-                case "System.UInt16":
-                case "System.Byte":
-                case "System.SByte": {
-                  const value2 = toNumber(raw);
-                  componentProperties.push({ label: fieldName, kind: "int", is_static: fieldStatic, read_only: false, value: value2 ?? 0 });
-                  break;
-                }
-                case "System.Boolean":
-                  componentProperties.push({ label: fieldName, kind: "bool", is_static: fieldStatic, read_only: false, value: Boolean(raw) });
-                  break;
-                case "System.String":
-                  componentProperties.push({ label: fieldName, kind: "string", is_static: fieldStatic, read_only: false, value: raw.toString() });
-                  break;
-                case "UnityEngine.Vector3":
-                  const rawVT = raw;
-                  const value = {
-                    x: rawVT.field("x").value,
-                    y: rawVT.field("y").value,
-                    z: rawVT.field("z").value
-                  };
-                  componentProperties.push({ label: fieldName, kind: "vector3", is_static: fieldStatic, read_only: false, value });
-                  break;
-                default: {
-                }
-              }
+              componentProperties.push({
+                label: field.name,
+                is_static: false,
+                read_only: false,
+                source: "field",
+                member: field.name,
+                ...parse(component.field(field.name).value)
+              });
             } catch (e) {
-              console.warn(`Failed to read field ${fieldName} of component ${componentName} (${componentType}): ${e}`);
-              continue;
+              console.warn(`Failed to read field ${field.name} of component ${componentName} (${componentType}): ${e}`);
+            }
+          }
+          const seenLabels = new Set(componentProperties.map((p) => p.label));
+          for (const getter2 of componentClass2.methods) {
+            if (getter2.isStatic || getter2.parameterCount !== 0 || !getter2.name.startsWith("get_")) continue;
+            const accessorName = getter2.name.substring(4);
+            if (accessorName.length === 0 || seenLabels.has(accessorName)) continue;
+            const parse = VALUE_PARSERS[getter2.returnType.name];
+            if (!parse) continue;
+            try {
+              const setterName = `set_${accessorName}`;
+              const hasSetter = componentClass2.tryMethod(setterName, 1) !== null;
+              componentProperties.push({
+                label: accessorName,
+                is_static: false,
+                read_only: !hasSetter,
+                source: "accessor",
+                getter: getter2.name,
+                setter: hasSetter ? setterName : null,
+                ...parse(component.method(getter2.name, 0).invoke())
+              });
+              seenLabels.add(accessorName);
+            } catch (e) {
+              console.warn(`Failed to invoke getter ${getter2.name} of component ${componentName} (${componentType}): ${e}`);
+            }
+          }
+          const customParser = CUSTOM_COMPONENT_PARSERS[componentType];
+          if (customParser) {
+            try {
+              componentProperties.push(...customParser(component));
+            } catch (e) {
+              console.warn(`Custom property parser for component ${componentName} (${componentType}) failed: ${e}`);
             }
           }
           components.push({
@@ -3570,7 +3654,11 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
             properties: componentProperties
           });
         }
+      } else {
+        console.warn(`GameObject ${name} states has componenets, but getcomponents returned null. This is unexpected.`);
       }
+    } else {
+      console.warn(`GameObject ${name} has no GetComponents method or Component class, cannot get components.`);
     }
     const children = [];
     if (transform) {

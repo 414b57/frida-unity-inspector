@@ -78,6 +78,10 @@
             color: #c8c8c8;
         }
         .prop-kind { color: #6a6a6a; font-size: 0.75rem; }
+        .prop-source { font-size: 0.75rem; cursor: default; }
+        .prop-source-field { color: #6a6a6a; }
+        .prop-source-accessor { color: #569cd6; }
+        .prop-source-synthetic { color: #ce9178; }
         .prop-row input[type="number"],
         .prop-row input[type="text"],
         .prop-row select {
@@ -354,6 +358,13 @@
             const row = el("div", "prop-row");
             row.appendChild(el("span", "prop-label", prop.label));
             row.appendChild(el("span", "prop-kind", prop.read_only ? `${prop.kind} (read-only)` : prop.kind));
+
+            const source = prop.source || "field";
+            const sourceTag = el("span", `prop-source prop-source-${source}`, `[${source}]`);
+            if (source === "field") sourceTag.title = `field: ${prop.member || prop.label}`;
+            else if (source === "accessor") sourceTag.title = `get: ${prop.getter || "?"} / set: ${prop.setter || "(none)"}`;
+            else sourceTag.title = "synthetic - value comes from a custom per-component handler on the agent";
+            row.appendChild(sourceTag);
 
             const editor = buildEditor(prop);
             row.appendChild(editor.node);

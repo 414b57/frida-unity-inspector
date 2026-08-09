@@ -6,6 +6,8 @@ export type IconName = "cube" | "camera" | "light" | "canvas" | "script" | "gear
 
 export type PropertyKind = "int" | "float" | "double" | "bool" | "string" | "char" | "long" | "enum" | "vector2" | "vector3" | "vector4" | "vector2int" | "vector3int" | "quaternion" | "matrix4x4" | "rect" | "rectint" | "bounds" | "boundsint" | "color" | "color32" | "gradient" | "array" | "dictionary" | "object"
 
+export type PropertySource = "field" | "accessor" | "synthetic"
+
 export interface GameContext {
     version: string
     unity_version: string
@@ -66,12 +68,20 @@ export interface BaseProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
 }
 
 export interface IntProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "int"
     value: number
 }
@@ -80,6 +90,10 @@ export interface FloatProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "float"
     value: number
 }
@@ -88,6 +102,10 @@ export interface DoubleProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "double"
     value: number
 }
@@ -96,6 +114,10 @@ export interface BoolProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "bool"
     value: boolean
 }
@@ -104,6 +126,10 @@ export interface StringProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "string"
     value: string
 }
@@ -112,6 +138,10 @@ export interface CharProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "char"
     value: string
 }
@@ -120,6 +150,10 @@ export interface LongProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "long"
     value: number
 }
@@ -128,6 +162,10 @@ export interface EnumProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "enum"
     options?: string[]
     value: string
@@ -142,6 +180,10 @@ export interface Vector2Property {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "vector2"
     value: Vector2
 }
@@ -156,6 +198,10 @@ export interface Vector3Property {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "vector3"
     value: Vector3
 }
@@ -171,6 +217,10 @@ export interface Vector4Property {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "vector4"
     value: Vector4
 }
@@ -184,6 +234,10 @@ export interface Vector2IntProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "vector2int"
     value: Vector2Int
 }
@@ -198,6 +252,10 @@ export interface Vector3IntProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "vector3int"
     value: Vector3Int
 }
@@ -213,6 +271,10 @@ export interface QuaternionProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "quaternion"
     value: Quaternion
 }
@@ -240,6 +302,10 @@ export interface Matrix4x4Property {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "matrix4x4"
     value: Matrix4x4
 }
@@ -255,6 +321,10 @@ export interface RectProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "rect"
     value: Rect
 }
@@ -270,6 +340,10 @@ export interface RectIntProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "rectint"
     value: RectInt
 }
@@ -283,6 +357,10 @@ export interface BoundsProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "bounds"
     value: Bounds
 }
@@ -296,6 +374,10 @@ export interface BoundsIntProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "boundsint"
     value: BoundsInt
 }
@@ -311,6 +393,10 @@ export interface ColorProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "color"
     value: Color
 }
@@ -326,6 +412,10 @@ export interface Color32Property {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "color32"
     value: Color32
 }
@@ -334,6 +424,10 @@ export interface GradientProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "gradient"
     value: any
 }
@@ -342,6 +436,10 @@ export interface ArrayProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "array"
     value?: any[]
 }
@@ -350,6 +448,10 @@ export interface DictionaryProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "dictionary"
     value?: Record<any, any>
 }
@@ -358,6 +460,10 @@ export interface ObjectProperty {
     label: string
     is_static?: boolean
     read_only?: boolean
+    source?: PropertySource
+    member?: string | null
+    getter?: string | null
+    setter?: string | null
     kind?: "object"
     value: any
 }
