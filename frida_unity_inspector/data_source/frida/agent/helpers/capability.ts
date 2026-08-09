@@ -1,12 +1,12 @@
 import { CapabilityName, CapabilityRequires, CapabilitySignatures } from "./protocol";
 
 export interface Capability<N extends CapabilityName = CapabilityName> {
-    /** Stable identifier from protocol.json, also the name of the RPC export. */
+    /** Stable identifier from protocol_spec.py, also the name of the RPC export. */
     name: N;
     /** Returns true if the capability is available in the current target/required functions not stripped. */
     detect(): boolean;
     /**
-     * The capability itself. Its signature is pinned by protocol.json, so args and return type stay in step with the Python bindings.
+     * The capability itself. Its signature is pinned by protocol_spec.py, so args and return type stay in step with the Python bindings.
      */
     implementation: CapabilitySignatures[N];
 }

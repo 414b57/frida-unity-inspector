@@ -4,7 +4,7 @@
   "private": true,
   "description": "Default frida-il2cpp-bridge agent for the frida_injector module",
   "scripts": {
-    "generate": "node generate_protocol.mjs",
+    "generate": "python ../codegen.py",
     "typecheck": "tsc --noEmit",
     "build": "npm run generate && npm run typecheck && esbuild index.ts --bundle --outfile=_agent.js --format=iife --platform=neutral --log-level=warning",
     "watch": "node watch.mjs"

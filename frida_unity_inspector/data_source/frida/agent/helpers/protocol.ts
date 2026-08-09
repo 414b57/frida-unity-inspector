@@ -1,18 +1,16 @@
-/* AUTO-GENERATED from ../../protocol.json - do not edit by hand. */
-
+/* AUTO-GENERATED from ../../protocol_spec.py + ../../../models.py - do not edit by hand. */
+import type { HierarchyNode } from "./models"
 
 export const MessageTypes = {
     EVENT: "event",
 } as const
 export type MessageType = (typeof MessageTypes)[keyof typeof MessageTypes]
 
-
 export const Events = {
     AGENT_LOADED: "agent_loaded",
     AGENT_READY: "agent_ready",
 } as const
 export type EventName = (typeof Events)[keyof typeof Events]
-
 
 export const Builtins = {
     CAPABILITIES: "capabilities",
@@ -21,7 +19,6 @@ export const Builtins = {
     PING: "ping",
 } as const
 export type BuiltinName = (typeof Builtins)[keyof typeof Builtins]
-
 
 export const Capabilities = {
     GET_CURRENT_RENDER_PIPELINE: "getCurrentRenderPipeline",
@@ -48,9 +45,9 @@ export interface EventPayloads {
 /** Signature each capability's implementation must have. */
 export interface CapabilitySignatures {
     "getCurrentRenderPipeline": () => string | null | Promise<string | null>
-    "getSceneManager": () => any | null | Promise<any | null>
-    "getCurrentScene": () => any | null | Promise<any | null>
-    "getCurrentSceneHierarchy": () => any | null | Promise<any | null>
+    "getSceneManager": () => any | Promise<any>
+    "getCurrentScene": () => any | Promise<any>
+    "getCurrentSceneHierarchy": () => HierarchyNode[] | null | Promise<HierarchyNode[] | null>
 }
 
 export interface BuiltinSignatures {

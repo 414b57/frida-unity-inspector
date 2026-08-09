@@ -1,60 +1,15 @@
 import "frida-il2cpp-bridge"
 
 import { defineCapability, getCapability } from "../helpers/capability"
+import type { Component, GameObjectData, HierarchyNode, IconName } from "../helpers/models"
 import { Capabilities } from "../helpers/protocol"
 import { method } from "../helpers/resolve"
-
-// shape:
-/*
-class HierarchyNode(BaseModel):
-    """A GameObject row in the Hierarchy tree."""
-
-    id: str
-    name: str
-    icon: IconName = "cube"
-    icon_color: Optional[str] = None # optional CSS color override
-
-    # data: GameObjectData = Field(default_factory=GameObjectData)
-    data: GameObjectData = Field(default_factory=lambda: GameObjectData())
-    # make it a lambda to shut up `Unresolved reference 'GameObjectData'`
-
-    children: list[HierarchyNode] = Field(default_factory=list)
-
-class GameObjectData(BaseModel):
-    """The runtime state of a GameObject, including its components."""
-
-    active: bool = True
-    tag: str = "Untagged"
-    layer: int = 0
-    # Note: Tag's are unlimited. So use str to match. Layers ar limited (0-31). So use int to match.
-    # Layer has some built in's, but rest are game specific.
-    # 0 = Default, 1 = TransparentFX, 2 = Ignore Raycast, 3 = User Defined, 4 = Water, 5 = UI, 6-31 = User Defined
-
-    components: list[Component] = Field(default_factory=list)
- */
-
-// TODO - Look into a "generate_protocol.mjs" something, but for the models.
-export interface HierarchyNode {
-    id: string
-    name: string
-    icon: string
-    icon_color?: string
-    data: GameObjectData
-    children: HierarchyNode[]
-}
-
-export interface GameObjectData {
-    active: boolean
-    tag: string
-    layer: number
-    components: any[] // TODO: Define Component interface
-}
 
 function parseGameObjectToHierarchyNode(gameObject: Il2Cpp.Object): HierarchyNode {
     // Hierarchy Node
     const id = gameObject.handle.toString()
     const name = gameObject.tryMethod<Il2Cpp.String>("get_name")?.invoke().toString() ?? "Unknown-GameObject"
-    const icon: string = "unknown" // TODO: Determine, either here, or in python side. idk yet.
+    const icon: IconName = "unknown" // TODO: Determine, either here, or in python side. idk yet.
 
     // Data for the GameObject
     const active = gameObject.tryMethod<boolean>("get_activeSelf")?.invoke() ?? false
@@ -63,7 +18,7 @@ function parseGameObjectToHierarchyNode(gameObject: Il2Cpp.Object): HierarchyNod
     const transform = gameObject.tryMethod<Il2Cpp.Object>("get_transform")?.invoke() ?? null
 
     // TODO - Componennts
-    const components: any[] = [] // TODO: Implement component parsing
+    const components: Component[] = [] // TODO: Implement component parsing
 
     // Recursively get and parse children
     const children: HierarchyNode[] = []

@@ -1,10 +1,11 @@
-"""AUTO-GENERATED from protocol.json - do not edit by hand."""
+"""AUTO-GENERATED from protocol_spec.py + models.py - do not edit by hand."""
 from __future__ import annotations
 
 from enum import StrEnum
 from typing import Any, Awaitable, Callable, TypeAlias
 
 from pydantic import TypeAdapter
+from ..models import HierarchyNode
 
 
 class MessageTypes(StrEnum):
@@ -55,9 +56,9 @@ _VERSION_RETURN: TypeAdapter[Any] = TypeAdapter(str)
 _UNITY_VERSION_RETURN: TypeAdapter[Any] = TypeAdapter(str)
 _PING_RETURN: TypeAdapter[Any] = TypeAdapter(tuple[float, float])
 _GET_CURRENT_RENDER_PIPELINE_RETURN: TypeAdapter[Any] = TypeAdapter(str | None)
-_GET_SCENE_MANAGER_RETURN: TypeAdapter[Any] = TypeAdapter(Any | None)
-_GET_CURRENT_SCENE_RETURN: TypeAdapter[Any] = TypeAdapter(Any | None)
-_GET_CURRENT_SCENE_HIERARCHY_RETURN: TypeAdapter[Any] = TypeAdapter(Any | None)
+_GET_SCENE_MANAGER_RETURN: TypeAdapter[Any] = TypeAdapter(Any)
+_GET_CURRENT_SCENE_RETURN: TypeAdapter[Any] = TypeAdapter(Any)
+_GET_CURRENT_SCENE_HIERARCHY_RETURN: TypeAdapter[Any] = TypeAdapter(list[HierarchyNode] | None)
 
 
 RpcCall: TypeAlias = Callable[..., Awaitable[Any]]
@@ -108,14 +109,14 @@ class AgentRpc:
         result = await self._call(Capabilities.GET_CURRENT_RENDER_PIPELINE)
         return _GET_CURRENT_RENDER_PIPELINE_RETURN.validate_python(result)
 
-    async def get_scene_manager(self) -> Any | None:
+    async def get_scene_manager(self) -> Any:
         result = await self._call(Capabilities.GET_SCENE_MANAGER)
         return _GET_SCENE_MANAGER_RETURN.validate_python(result)
 
-    async def get_current_scene(self) -> Any | None:
+    async def get_current_scene(self) -> Any:
         result = await self._call(Capabilities.GET_CURRENT_SCENE)
         return _GET_CURRENT_SCENE_RETURN.validate_python(result)
 
-    async def get_current_scene_hierarchy(self) -> Any | None:
+    async def get_current_scene_hierarchy(self) -> list[HierarchyNode] | None:
         result = await self._call(Capabilities.GET_CURRENT_SCENE_HIERARCHY)
         return _GET_CURRENT_SCENE_HIERARCHY_RETURN.validate_python(result)

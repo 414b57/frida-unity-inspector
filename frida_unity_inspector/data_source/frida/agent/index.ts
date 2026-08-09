@@ -11,8 +11,8 @@ import "./capabilities/getCurrentSceneHierarchy"
 
 /*
 Design idea:
-- protocol.json is the single source of truth for names and signatures; helpers/protocol.ts and ../protocol.py are generated from it, so both sides of the boundary agree by construction.
-- Each capability (capabilities/*.ts) detects the assemblies/classes/methods it needs and, if present, gets its implementation exported over RPC. Adding a feature = one protocol.json entry + one file + one import above.
+- The Python side is the single source of truth: models.py defines the data shapes, protocol_spec.py the RPC/event surface. From these files codegen.py generates ../protocol.py, helpers/protocol.ts, and helpers/models.ts, so both sides of the boundary agree by construction.
+- Each capability (capabilities/*.ts) detects the assemblies/classes/methods it needs and, if present, gets its implementation exported over RPC. Adding a feature = one protocol_spec.py entry (+ any models.py shape) + one file + one import above.
 - Registration happens here; each implementation starts Il2Cpp.perform itself and returns its promise. (Done this way, as some funcs may not need Il2Cpp.perform, so implementations can choose to do it themselves.)
 */
 
