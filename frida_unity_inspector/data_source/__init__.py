@@ -1,5 +1,5 @@
-from .models import LogType, IconName, PropertyKind, GameContext, SceneDeclaration, LogEntry, Status, Scene, HierarchyNode, GameObjectData, Component, Property
-from .base_data import LogCallback, UpdateCallback, StructureUpdate, PropertiesUpdate, DataUpdate, BaseDataSource
+from .models import LogType, IconName, PropertyKind, GameContext, SceneDeclaration, LogEntry, Status, Scene, HierarchyNode, GameObjectData, Component, BaseProperty, Property
+from .base_data import LogCallback, UpdateCallback, StatusUpdate, StructureUpdate, PropertiesUpdate, DataUpdate, BaseDataSource
 
 from .basic_mock import BasicMockDataSource
 
@@ -18,6 +18,7 @@ __all__ = [
     "HierarchyNode",
     "GameObjectData",
     "Component",
+    "BaseProperty",
     "Property",
     # Base
     "LogCallback",

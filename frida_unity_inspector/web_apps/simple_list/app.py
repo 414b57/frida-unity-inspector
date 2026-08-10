@@ -18,7 +18,7 @@ from typing_extensions import override
 from ..base_app import BaseWebApp
 from ..websocket_hub import WebSocketHub
 from ...data_source import BaseDataSource, DataUpdate
-from ...data_source import LogType, IconName, PropertyKind, GameContext, SceneDeclaration, LogEntry, Status, Scene, HierarchyNode, GameObjectData, Component, Property
+from ...data_source import LogType, IconName, PropertyKind, GameContext, SceneDeclaration, LogEntry, Status, Scene, HierarchyNode, GameObjectData, Component, BaseProperty ,Property
 
 INDEX_FILE = Path(__file__).resolve().parent / "index.html"
 
@@ -38,8 +38,7 @@ class SetComponentEnabledRequest(BaseModel):
 class SetPropertyRequest(BaseModel):
     object_id: str
     component_id: str
-    label: str
-    value: Any
+    property: Property
 
 
 class SimpleListWebApp(BaseWebApp):
@@ -119,7 +118,7 @@ class SimpleListWebApp(BaseWebApp):
 
     async def set_property(self, request: SetPropertyRequest) -> dict:
         try:
-            updated = await self.datasource.set_property(request.object_id, request.component_id, request.label, request.value)
+            updated = await self.datasource.set_property(request.object_id, request.component_id, request.property)
         except KeyError as e:
             raise HTTPException(status_code=404, detail=str(e))
         except ValueError as e:

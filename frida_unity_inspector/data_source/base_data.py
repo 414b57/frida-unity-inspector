@@ -6,7 +6,7 @@ from typing import Annotated, Any, Callable, Literal, Union
 
 from pydantic import BaseModel, Field
 
-from .models import LogType, IconName, PropertyKind, GameContext, SceneDeclaration, LogEntry, Status, Scene, HierarchyNode, GameObjectData, Component, Property
+from .models import LogType, IconName, PropertyKind, GameContext, SceneDeclaration, LogEntry, Status, Scene, HierarchyNode, GameObjectData, Component, BaseProperty, Property
 
 LogCallback = Callable[[LogEntry], None]
 
@@ -91,7 +91,7 @@ class BaseDataSource(ABC):
         """Toggle a component's enabled state."""
 
     @abstractmethod
-    async def set_property(self, object_id: str, component_id: str, label: str, value: Any) -> Property:
+    async def set_property(self, object_id: str, component_id: str, property: Property) -> Property:
         """Set a component property's value and return the updated property."""
 
     # -- update streaming --

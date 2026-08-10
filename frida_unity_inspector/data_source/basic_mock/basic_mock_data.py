@@ -381,21 +381,22 @@ class BasicMockDataSource(BaseDataSource):
         component.enabled = enabled
         self.logger.info(f"Set enabled state of {object_id}/{component_id} ({component.name}) to {enabled}.")
 
-    async def set_property(self, object_id: str, component_id: str, label: str, value: Any) -> Property:
+    async def set_property(self, object_id: str, component_id: str, property: Property) -> Property:
         """Set a component property's value."""
-        component = self._find_component(object_id, component_id)
-        for index, prop in enumerate(component.properties):
-            if prop.label != label:
-                continue
-            if prop.read_only:
-                raise ValueError(f"Property '{label}' is read-only.")
-            if isinstance(prop, EnumProperty) and value not in prop.options:
-                raise ValueError(f"'{value}' is not one of {prop.options}.")
-
-            data = prop.model_dump()
-            data["value"] = value
-            new_prop = _PROPERTY_ADAPTER.validate_python(data)
-            component.properties[index] = new_prop
-            self.logger.info(f"Set property '{label}' of {object_id}/{component_id} ({component.name}) to {value!r}.")
-            return new_prop
-        raise KeyError(f"Component '{component_id}' has no property labeled '{label}'.")
+        return False # TODO - Re-implement.
+        # component = self._find_component(object_id, component_id)
+        # for index, prop in enumerate(component.properties):
+        #     if prop.label != label:
+        #         continue
+        #     if prop.read_only:
+        #         raise ValueError(f"Property '{label}' is read-only.")
+        #     if isinstance(prop, EnumProperty) and value not in prop.options:
+        #         raise ValueError(f"'{value}' is not one of {prop.options}.")
+        #
+        #     data = prop.model_dump()
+        #     data["value"] = value
+        #     new_prop = _PROPERTY_ADAPTER.validate_python(data)
+        #     component.properties[index] = new_prop
+        #     self.logger.info(f"Set property '{label}' of {object_id}/{component_id} ({component.name}) to {value!r}.")
+        #     return new_prop
+        # raise KeyError(f"Component '{component_id}' has no property labeled '{label}'.")

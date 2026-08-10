@@ -412,8 +412,7 @@
                     await postJson("/api/set_property", {
                         object_id: objectId,
                         component_id: componentId,
-                        label: prop.label,
-                        value: value,
+                        property: prop
                     });
                     row.title = "";
                     flash(row, true);
