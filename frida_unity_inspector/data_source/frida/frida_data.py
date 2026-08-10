@@ -25,6 +25,8 @@ SERVER_FILE_PATH = CWD / SERVER_FILE
 
 # Delay between ticks of the run loop. Each tick polls for a light hierarchy structure, then polls for a chunk of property values.
 TICK_INTERVAL_SECONDS = 0.25
+# Whether should account for time spent in tick when sleeping between ticks. If True, then the sleep time is reduced by the time spent in tick, so that the total time between ticks is approximately TICK_INTERVAL_SECONDS. If False, then the sleep time is always TICK_INTERVAL_SECONDS, so that the total time between ticks is TICK_INTERVAL_SECONDS + time spent in tick.
+ACCOUNT_FOR_TICK_TIME = True
 # How many properties to poll per tick. Polling too many properties at once can hitch the game thread, so we do it in chunks.
 PROPS_PER_TICK = 10
 
@@ -54,6 +56,7 @@ class FridaDataSource(BaseDataSource):
         self.session: AgentSession | None = None
         self._run_loop_task: asyncio.Task | None = None
         self._running = False
+        self._last_tick_time: float | None = None
 
         # runtime - external state (From agent/unity)
         self.current_status: Status | None = None
@@ -141,7 +144,10 @@ class FridaDataSource(BaseDataSource):
             except Exception as e:
                 self.logger.error(f"Error in FridaDataSource run loop: {e}\n", exc_info=e)
             finally:
-                await asyncio.sleep(TICK_INTERVAL_SECONDS)
+                sleep_time = TICK_INTERVAL_SECONDS
+                if ACCOUNT_FOR_TICK_TIME and self._last_tick_time is not None:
+                    sleep_time = max(0.0, TICK_INTERVAL_SECONDS - self._last_tick_time)
+                await asyncio.sleep(sleep_time)
 
     async def _tick(self) -> None:
         """One poll cycle: refresh the light structure, then one chunk of property values."""
@@ -160,6 +166,7 @@ class FridaDataSource(BaseDataSource):
         )
         self.logger.debug(f"Ping round-trip time: {round_trip_time:.6f}s, python-to-ts delay: {python_to_ts_delay:.6f}s, ts-to-python delay: {stop-ts_time:.6f}s, tick took {finish-start:.6f}s")
         self._emit_update(StatusUpdate(status=self.current_status))
+        self._last_tick_time = time.time()-start
 
     async def _poll_structure(self) -> None:
         """Refresh the light hierarchy tree; on change, re-key the property and notify subscribers."""
