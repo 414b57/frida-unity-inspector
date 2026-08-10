@@ -4,11 +4,19 @@ import {capabilities, resolveAvailability} from "./helpers/capability"
 import {Builtins, Events, sendEvent} from "./helpers/protocol"
 
 // Import each capability module for its registration side effect.
+/// Information Getting
+// Context/Scene management
 import "./capabilities/getCurrentRenderPipeline"
 import "./capabilities/getSceneManager"
 import "./capabilities/getCurrentScene"
+// Hierarchy/Component getting
 import "./capabilities/getHierarchyStructure"
+// Component property getting
 import "./capabilities/getComponentProperties"
+
+/// Data Writing
+// GameObject/component/property changing
+import "./capabilities/setGameObjectActive"
 
 /*
 Design idea:

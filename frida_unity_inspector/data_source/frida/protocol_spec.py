@@ -94,6 +94,7 @@ BUILTINS: list[Call] = [
 
 # Capabilities are functions that may or may not be available depending on the agent's capabilities (i.e. unity version, if functions have have been stripped or not, etc.)
 CAPABILITIES: list[Call] = [
+    ## Information Getting
     # Context / scene management
     Call("GET_CURRENT_RENDER_PIPELINE", "getCurrentRenderPipeline", Optional[str]),
     Call("GET_SCENE_MANAGER", "getSceneManager", Any),
@@ -117,4 +118,12 @@ CAPABILITIES: list[Call] = [
         args=(Arg("component_ids", list[str]),),
         requires=("GET_HIERARCHY_STRUCTURE",),
     ),
+
+    ## Data writing
+    Call(
+        "SET_GAMEOBJECT_ACTIVE",
+        "setGameObjectActive",
+        bool,
+        args=(Arg("gameobject_handle_ptr", str), Arg("active", bool)),
+    )
 ]

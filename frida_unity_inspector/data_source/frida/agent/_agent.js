@@ -134,10 +134,10 @@
       createDirectoryRecursively(path);
       const destination = `${path}/${fileName}`;
       const file = new File(destination, "w");
-      for (const assembly2 of Il2Cpp3.domain.assemblies) {
-        inform(`dumping ${assembly2.name}...`);
-        for (const klass2 of assembly2.image.classes) {
-          file.write(`${klass2}
+      for (const assembly3 of Il2Cpp3.domain.assemblies) {
+        inform(`dumping ${assembly3.name}...`);
+        for (const klass3 of assembly3.image.classes) {
+          file.write(`${klass3}
 
 `);
         }
@@ -153,13 +153,13 @@
       if (!ignoreAlreadyExistingDirectory && directoryExists(path)) {
         raise(`directory ${path} already exists - pass ignoreAlreadyExistingDirectory = true to skip this check`);
       }
-      for (const assembly2 of Il2Cpp3.domain.assemblies) {
-        inform(`dumping ${assembly2.name}...`);
-        const destination = `${path}/${assembly2.name.replaceAll(".", "/")}.cs`;
+      for (const assembly3 of Il2Cpp3.domain.assemblies) {
+        inform(`dumping ${assembly3.name}...`);
+        const destination = `${path}/${assembly3.name.replaceAll(".", "/")}.cs`;
         createDirectoryRecursively(destination.substring(0, destination.lastIndexOf("/")));
         const file = new File(destination, "w");
-        for (const klass2 of assembly2.image.classes) {
-          file.write(`${klass2}
+        for (const klass3 of assembly3.image.classes) {
+          file.write(`${klass3}
 
 `);
         }
@@ -588,22 +588,22 @@
   })(Il2Cpp2 || (Il2Cpp2 = {}));
   var Il2Cpp2;
   (function(Il2Cpp3) {
-    function is(klass2) {
+    function is(klass3) {
       return (element) => {
         if (element instanceof Il2Cpp3.Class) {
-          return klass2.isAssignableFrom(element);
+          return klass3.isAssignableFrom(element);
         } else {
-          return klass2.isAssignableFrom(element.class);
+          return klass3.isAssignableFrom(element.class);
         }
       };
     }
     Il2Cpp3.is = is;
-    function isExactly(klass2) {
+    function isExactly(klass3) {
       return (element) => {
         if (element instanceof Il2Cpp3.Class) {
-          return element.equals(klass2);
+          return element.equals(klass3);
         } else {
-          return element.class.equals(klass2);
+          return element.class.equals(klass3);
         }
       };
     }
@@ -661,7 +661,7 @@
        * Returns the heap allocated objects of the specified class. \
        * This variant reads GC descriptors.
        */
-      choose(klass2) {
+      choose(klass3) {
         const matches = [];
         const callback = (objects, size) => {
           for (let i = 0; i < size; i++) {
@@ -672,7 +672,7 @@
         if (Il2Cpp3.unityVersionIsBelow202120) {
           const onWorld = new NativeCallback(() => {
           }, "void", []);
-          const state = Il2Cpp3.exports.livenessCalculationBegin(klass2, 0, chooseCallback, NULL, onWorld, onWorld);
+          const state = Il2Cpp3.exports.livenessCalculationBegin(klass3, 0, chooseCallback, NULL, onWorld, onWorld);
           Il2Cpp3.exports.livenessCalculationFromStatics(state);
           Il2Cpp3.exports.livenessCalculationEnd(state);
         } else {
@@ -686,7 +686,7 @@
           };
           const reallocCallback = new NativeCallback(realloc, "pointer", ["pointer", "size_t", "pointer"]);
           this.stopWorld();
-          const state = Il2Cpp3.exports.livenessAllocateStruct(klass2, 0, chooseCallback, NULL, reallocCallback);
+          const state = Il2Cpp3.exports.livenessAllocateStruct(klass3, 0, chooseCallback, NULL, reallocCallback);
           Il2Cpp3.exports.livenessCalculationFromStatics(state);
           Il2Cpp3.exports.livenessFinalize(state);
           this.startWorld();
@@ -1117,8 +1117,8 @@
   })(Il2Cpp2 || (Il2Cpp2 = {}));
   var Il2Cpp2;
   (function(Il2Cpp3) {
-    function nullable(valueOrNull, klass2) {
-      const actualClass = typeof valueOrNull == "boolean" ? Il2Cpp3.corlib.class("System.Boolean") : typeof valueOrNull == "number" ? klass2 ?? Il2Cpp3.corlib.class("System.Int32") : valueOrNull instanceof Int64 ? Il2Cpp3.corlib.class("System.Int64") : valueOrNull instanceof UInt64 ? Il2Cpp3.corlib.class("System.UInt64") : valueOrNull instanceof NativePointer ? klass2 ?? Il2Cpp3.corlib.class("System.IntPtr") : valueOrNull instanceof Il2Cpp3.ValueType ? valueOrNull.type.class : klass2 ?? raise(`A class must be specified when constructing a nullable for value '${valueOrNull}'`);
+    function nullable(valueOrNull, klass3) {
+      const actualClass = typeof valueOrNull == "boolean" ? Il2Cpp3.corlib.class("System.Boolean") : typeof valueOrNull == "number" ? klass3 ?? Il2Cpp3.corlib.class("System.Int32") : valueOrNull instanceof Int64 ? Il2Cpp3.corlib.class("System.Int64") : valueOrNull instanceof UInt64 ? Il2Cpp3.corlib.class("System.UInt64") : valueOrNull instanceof NativePointer ? klass3 ?? Il2Cpp3.corlib.class("System.IntPtr") : valueOrNull instanceof Il2Cpp3.ValueType ? valueOrNull.type.class : klass3 ?? raise(`A class must be specified when constructing a nullable for value '${valueOrNull}'`);
       if (actualClass.isValueType == false) {
         raise(`Cannot create nullable value type out of a reference type '${actualClass.type.name}'`);
       }
@@ -1284,36 +1284,36 @@ ${this.#state.buffer.join("\n")}
             filterMethod(method2);
           }
         };
-        const filterClass = (klass2) => {
+        const filterClass = (klass3) => {
           if (this.#methodFilter == void 0) {
-            filterMethods(klass2.methods);
+            filterMethods(klass3.methods);
             return;
           }
-          for (const method2 of klass2.methods) {
+          for (const method2 of klass3.methods) {
             if (this.#methodFilter(method2)) {
               filterMethod(method2);
             }
           }
         };
         const filterClasses = (values) => {
-          for (const klass2 of values) {
-            filterClass(klass2);
+          for (const klass3 of values) {
+            filterClass(klass3);
           }
         };
-        const filterAssembly = (assembly2) => {
+        const filterAssembly = (assembly3) => {
           if (this.#classFilter == void 0) {
-            filterClasses(assembly2.image.classes);
+            filterClasses(assembly3.image.classes);
             return;
           }
-          for (const klass2 of assembly2.image.classes) {
-            if (this.#classFilter(klass2)) {
-              filterClass(klass2);
+          for (const klass3 of assembly3.image.classes) {
+            if (this.#classFilter(klass3)) {
+              filterClass(klass3);
             }
           }
         };
         const filterAssemblies = (assemblies) => {
-          for (const assembly2 of assemblies) {
-            filterAssembly(assembly2);
+          for (const assembly3 of assemblies) {
+            filterAssembly(assembly3);
           }
         };
         const filterDomain = (domain) => {
@@ -1321,9 +1321,9 @@ ${this.#state.buffer.join("\n")}
             filterAssemblies(domain.assemblies);
             return;
           }
-          for (const assembly2 of domain.assemblies) {
-            if (this.#assemblyFilter(assembly2)) {
-              filterAssembly(assembly2);
+          for (const assembly3 of domain.assemblies) {
+            if (this.#assemblyFilter(assembly3)) {
+              filterAssembly(assembly3);
             }
           }
         };
@@ -1512,9 +1512,9 @@ ${this.#state.buffer.join("\n")}
       lazy
     ], Array2, "headerSize", null);
     Il2Cpp3.Array = Array2;
-    function array(klass2, lengthOrElements) {
+    function array(klass3, lengthOrElements) {
       const length = typeof lengthOrElements == "number" ? lengthOrElements : lengthOrElements.length;
-      const array2 = new Il2Cpp3.Array(Il2Cpp3.exports.arrayNew(klass2, length));
+      const array2 = new Il2Cpp3.Array(Il2Cpp3.exports.arrayNew(klass3, length));
       if (globalThis.Array.isArray(lengthOrElements)) {
         array2.elements.write(lengthOrElements);
       }
@@ -1608,8 +1608,8 @@ ${this.#state.buffer.join("\n")}
       }
       /** Gets the generic class of the current class if the current class is inflated. */
       get genericClass() {
-        const klass2 = this.image.tryClass(this.fullName)?.asNullable();
-        return klass2?.equals(this) ? null : klass2 ?? null;
+        const klass3 = this.image.tryClass(this.fullName)?.asNullable();
+        return klass3?.equals(this) ? null : klass3 ?? null;
       }
       /** Gets the generics parameters of this generic class. */
       get generics() {
@@ -1735,10 +1735,10 @@ ${this.#state.buffer.join("\n")}
       }
       /** Gets the hierarchy of the current class. */
       *hierarchy(options) {
-        let klass2 = options?.includeCurrent ?? true ? this : this.parent;
-        while (klass2) {
-          yield klass2;
-          klass2 = klass2.parent;
+        let klass3 = options?.includeCurrent ?? true ? this : this.parent;
+        while (klass3) {
+          yield klass3;
+          klass3 = klass3.parent;
         }
       }
       /** Builds a generic instance of the current generic class. */
@@ -1919,18 +1919,18 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
   })(Il2Cpp2 || (Il2Cpp2 = {}));
   var Il2Cpp2;
   (function(Il2Cpp3) {
-    function delegate(klass2, block) {
+    function delegate(klass3, block) {
       const SystemDelegate = Il2Cpp3.corlib.class("System.Delegate");
       const SystemMulticastDelegate = Il2Cpp3.corlib.class("System.MulticastDelegate");
-      if (!SystemDelegate.isAssignableFrom(klass2)) {
-        raise(`cannot create a delegate for ${klass2.type.name} as it's a non-delegate class`);
+      if (!SystemDelegate.isAssignableFrom(klass3)) {
+        raise(`cannot create a delegate for ${klass3.type.name} as it's a non-delegate class`);
       }
-      if (klass2.equals(SystemDelegate) || klass2.equals(SystemMulticastDelegate)) {
+      if (klass3.equals(SystemDelegate) || klass3.equals(SystemMulticastDelegate)) {
         raise(`cannot create a delegate for neither ${SystemDelegate.type.name} nor ${SystemMulticastDelegate.type.name}, use a subclass instead`);
       }
-      const delegate2 = klass2.alloc();
+      const delegate2 = klass3.alloc();
       const key = delegate2.handle.toString();
-      const Invoke = delegate2.tryMethod("Invoke") ?? raise(`cannot create a delegate for ${klass2.type.name}, there is no Invoke method`);
+      const Invoke = delegate2.tryMethod("Invoke") ?? raise(`cannot create a delegate for ${klass3.type.name}, there is no Invoke method`);
       delegate2.method(".ctor").invoke(delegate2, Invoke.handle);
       const callback = Invoke.wrap(block);
       delegate2.field("method_ptr").value = callback;
@@ -2445,8 +2445,8 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       }
       /** @internal */
       *overloads() {
-        for (const klass2 of this.class.hierarchy()) {
-          for (const method2 of klass2.methods) {
+        for (const klass3 of this.class.hierarchy()) {
+          for (const method2 of klass3.methods) {
             if (this.name == method2.name) {
               yield method2;
             }
@@ -2713,8 +2713,8 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       tryField(name) {
         const field = this.class.tryField(name);
         if (field?.isStatic) {
-          for (const klass2 of this.class.hierarchy({ includeCurrent: false })) {
-            for (const field2 of klass2.fields) {
+          for (const klass3 of this.class.hierarchy({ includeCurrent: false })) {
+            for (const field2 of klass3.fields) {
               if (field2.name == name && !field2.isStatic) {
                 return field2.bind(this);
               }
@@ -2728,8 +2728,8 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       tryMethod(name, parameterCount = -1) {
         const method2 = this.class.tryMethod(name, parameterCount);
         if (method2?.isStatic) {
-          for (const klass2 of this.class.hierarchy()) {
-            for (const method3 of klass2.methods) {
+          for (const klass3 of this.class.hierarchy()) {
+            for (const method3 of klass3.methods) {
               if (method3.name == name && !method3.isStatic && (parameterCount < 0 || method3.parameterCount == parameterCount)) {
                 return method3.bind(this);
               }
@@ -3040,12 +3040,12 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
         });
       }
       /** @internal */
-      tryLocalValue(klass2) {
+      tryLocalValue(klass3) {
         for (let i = 0; i < 16; i++) {
           const base = this.staticData.add(i * Process.pointerSize).readPointer();
           if (!base.isNull()) {
             const object = new Il2Cpp3.Object(base.readPointer()).asNullable();
-            if (object?.class?.isSubclassOf(klass2, false)) {
+            if (object?.class?.isSubclassOf(klass3, false)) {
               return object;
             }
           }
@@ -3304,8 +3304,8 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       tryField(name) {
         const field = this.type.class.tryField(name);
         if (field?.isStatic) {
-          for (const klass2 of this.type.class.hierarchy()) {
-            for (const field2 of klass2.fields) {
+          for (const klass3 of this.type.class.hierarchy()) {
+            for (const field2 of klass3.fields) {
               if (field2.name == name && !field2.isStatic) {
                 return field2.bind(this);
               }
@@ -3319,8 +3319,8 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       tryMethod(name, parameterCount = -1) {
         const method2 = this.type.class.tryMethod(name, parameterCount);
         if (method2?.isStatic) {
-          for (const klass2 of this.type.class.hierarchy()) {
-            for (const method3 of klass2.methods) {
+          for (const klass3 of this.type.class.hierarchy()) {
+            for (const method3 of klass3.methods) {
               if (method3.name == name && !method3.isStatic && (parameterCount < 0 || method3.parameterCount == parameterCount)) {
                 return method3.bind(this);
               }
@@ -3363,14 +3363,16 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     GET_SCENE_MANAGER: "getSceneManager",
     GET_CURRENT_SCENE: "getCurrentScene",
     GET_HIERARCHY_STRUCTURE: "getHierarchyStructure",
-    GET_COMPONENT_PROPERTIES: "getComponentProperties"
+    GET_COMPONENT_PROPERTIES: "getComponentProperties",
+    SET_GAMEOBJECT_ACTIVE: "setGameObjectActive"
   };
   var CapabilityRequires = {
     "getCurrentRenderPipeline": [],
     "getSceneManager": [],
     "getCurrentScene": ["getSceneManager"],
     "getHierarchyStructure": ["getCurrentScene"],
-    "getComponentProperties": ["getHierarchyStructure"]
+    "getComponentProperties": ["getHierarchyStructure"],
+    "setGameObjectActive": []
   };
   function sendEvent(event, data) {
     send({ type: MessageTypes.EVENT, event, data });
@@ -3499,7 +3501,6 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     "System.Int16": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
     "System.Int32": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
     "System.Int64": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
-    // 02:36:17.418  INFO      fui.utils.frida_injector   [agent] Parsing field longProperty of component DataTestScript (DataTestScript) with type System.Int64
     "System.UInt16": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
     "System.UInt32": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
     "System.UInt64": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
@@ -3843,7 +3844,6 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       }
       const parse = resolveParser(field.type, baseComponentClass);
       if (!parse) {
-        console.warn(`No parser for field ${field.name} of component ${componentName} (${componentType}) with type ${field.type.name}`);
         continue;
       }
       try {
@@ -4024,6 +4024,21 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
         }
       }
       return result;
+    })
+  });
+
+  // capabilities/setGameObjectActive.ts
+  defineCapability({
+    name: Capabilities.SET_GAMEOBJECT_ACTIVE,
+    detect: () => method("UnityEngine.CoreModule", "UnityEngine.GameObject", "SetActive", 1) !== null,
+    implementation: (gameobject_handle_ptr, active) => Il2Cpp.perform(() => {
+      const go = new Il2Cpp.Object(ptr(gameobject_handle_ptr));
+      const method2 = go.tryMethod("SetActive", 1);
+      if (method2 === null) {
+        return false;
+      }
+      method2?.invoke(active);
+      return true;
     })
   });
 

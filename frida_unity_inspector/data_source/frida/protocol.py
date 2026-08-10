@@ -30,6 +30,7 @@ class Capabilities(StrEnum):
     GET_CURRENT_SCENE = "getCurrentScene"
     GET_HIERARCHY_STRUCTURE = "getHierarchyStructure"
     GET_COMPONENT_PROPERTIES = "getComponentProperties"
+    SET_GAMEOBJECT_ACTIVE = "setGameObjectActive"
 
 
 # Capabilities each capability depends on
@@ -39,6 +40,7 @@ CAPABILITY_REQUIRES: dict[Capabilities, tuple[Capabilities, ...]] = {
     Capabilities.GET_CURRENT_SCENE: (Capabilities.GET_SCENE_MANAGER,),
     Capabilities.GET_HIERARCHY_STRUCTURE: (Capabilities.GET_CURRENT_SCENE,),
     Capabilities.GET_COMPONENT_PROPERTIES: (Capabilities.GET_HIERARCHY_STRUCTURE,),
+    Capabilities.SET_GAMEOBJECT_ACTIVE: (),
 }
 
 
@@ -62,6 +64,7 @@ _GET_SCENE_MANAGER_RETURN: TypeAdapter[Any] = TypeAdapter(Any)
 _GET_CURRENT_SCENE_RETURN: TypeAdapter[Any] = TypeAdapter(Any)
 _GET_HIERARCHY_STRUCTURE_RETURN: TypeAdapter[Any] = TypeAdapter(list[HierarchyNode] | None)
 _GET_COMPONENT_PROPERTIES_RETURN: TypeAdapter[Any] = TypeAdapter(dict[str, list[Property] | None])
+_SET_GAMEOBJECT_ACTIVE_RETURN: TypeAdapter[Any] = TypeAdapter(bool)
 
 
 RpcCall: TypeAlias = Callable[..., Awaitable[Any]]
@@ -85,6 +88,7 @@ class AgentRpc:
                 Capabilities.GET_CURRENT_SCENE: self.get_current_scene,
                 Capabilities.GET_HIERARCHY_STRUCTURE: self.get_hierarchy_structure,
                 Capabilities.GET_COMPONENT_PROPERTIES: self.get_component_properties,
+                Capabilities.SET_GAMEOBJECT_ACTIVE: self.set_gameobject_active,
             }
 
     def dispatch(self, key: StrEnum, *args, **kwargs) -> Awaitable[Any]:
@@ -128,3 +132,7 @@ class AgentRpc:
     async def get_component_properties(self, component_ids: list[str]) -> dict[str, list[Property] | None]:
         result = await self._call(Capabilities.GET_COMPONENT_PROPERTIES, component_ids)
         return _GET_COMPONENT_PROPERTIES_RETURN.validate_python(result)
+
+    async def set_gameobject_active(self, gameobject_handle_ptr: str, active: bool) -> bool:
+        result = await self._call(Capabilities.SET_GAMEOBJECT_ACTIVE, gameobject_handle_ptr, active)
+        return _SET_GAMEOBJECT_ACTIVE_RETURN.validate_python(result)

@@ -45,7 +45,6 @@ const VALUE_PARSERS: Record<string, (raw: unknown, base: BaseProperty) => Proper
     "System.Int16": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
     "System.Int32": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
     "System.Int64": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
-    // 02:36:17.418  INFO      fui.utils.frida_injector   [agent] Parsing field longProperty of component DataTestScript (DataTestScript) with type System.Int64
     "System.UInt16": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
     "System.UInt32": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
     "System.UInt64": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),

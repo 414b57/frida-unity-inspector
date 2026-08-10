@@ -65,6 +65,7 @@ class AgentSession:
         if not self.has_capability(capability):
             missing = self.missing_requirements(capability)
             reason = f" - it requires {', '.join(missing)}, which the agent does not have" if missing else ""
+            reason = f" - Make sure that the method is registered/required in index.ts and that the agent is built with the correct Unity version" if not missing else reason
             raise RuntimeError(f"Agent does not have capability '{capability}'{reason}")
         return self.rpc.dispatch(capability, *args, **kwargs)
 

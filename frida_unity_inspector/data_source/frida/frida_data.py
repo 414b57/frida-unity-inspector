@@ -254,6 +254,11 @@ class FridaDataSource(BaseDataSource):
     # -- writing data --
     async def set_active(self, object_id: str, active: bool) -> None:
         """TODO"""
+        self.logger.debug(f"Setting active state of object {object_id} to {active}")
+        result = await self.session.call_capability(Capabilities.SET_GAMEOBJECT_ACTIVE, object_id, active)
+        if not result:
+            raise RuntimeError(f"Failed to set active state of object {object_id} to {active}")
+        self.logger.debug(f"Successfully set active state of object {object_id} to {active}")
 
     async def set_component_enabled(self, object_id: str, component_id: str, enabled: bool) -> None:
         """TODO"""
