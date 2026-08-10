@@ -4,7 +4,7 @@ export type LogType = "log" | "warning" | "error"
 
 export type IconName = "cube" | "camera" | "light" | "canvas" | "script" | "gear" | "move" | "rotate" | "scale" | "rect" | "headphones" | "unknown" | "error" | "warning" | "check" | "cross"
 
-export type PropertyKind = "int" | "float" | "double" | "bool" | "string" | "char" | "long" | "enum" | "vector2" | "vector3" | "vector4" | "vector2int" | "vector3int" | "quaternion" | "matrix4x4" | "rect" | "rectint" | "bounds" | "boundsint" | "color" | "color32" | "gradient" | "array" | "dictionary" | "object"
+export type PropertyKind = "int" | "float" | "double" | "bool" | "string" | "char" | "enum" | "vector2" | "vector3" | "vector4" | "vector2int" | "vector3int" | "quaternion" | "matrix4x4" | "rect" | "rectint" | "bounds" | "boundsint" | "color" | "color32" | "gradient" | "array" | "dictionary" | "object"
 
 export type PropertySource = "field" | "accessor" | "synthetic"
 
@@ -144,18 +144,6 @@ export interface CharProperty {
     setter?: string | null
     kind?: "char"
     value: string
-}
-
-export interface LongProperty {
-    label: string
-    is_static?: boolean
-    read_only?: boolean
-    source?: PropertySource
-    member?: string | null
-    getter?: string | null
-    setter?: string | null
-    kind?: "long"
-    value: number
 }
 
 export interface EnumProperty {
@@ -468,4 +456,4 @@ export interface ObjectProperty {
     value: any
 }
 
-export type Property = IntProperty | FloatProperty | DoubleProperty | BoolProperty | StringProperty | CharProperty | LongProperty | EnumProperty | Vector2Property | Vector3Property | Vector4Property | Vector2IntProperty | Vector3IntProperty | QuaternionProperty | Matrix4x4Property | RectProperty | RectIntProperty | BoundsProperty | BoundsIntProperty | ColorProperty | Color32Property | GradientProperty | ArrayProperty | DictionaryProperty | ObjectProperty
+export type Property = IntProperty | FloatProperty | DoubleProperty | BoolProperty | StringProperty | CharProperty | EnumProperty | Vector2Property | Vector3Property | Vector4Property | Vector2IntProperty | Vector3IntProperty | QuaternionProperty | Matrix4x4Property | RectProperty | RectIntProperty | BoundsProperty | BoundsIntProperty | ColorProperty | Color32Property | GradientProperty | ArrayProperty | DictionaryProperty | ObjectProperty

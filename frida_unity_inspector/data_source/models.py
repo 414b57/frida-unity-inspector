@@ -39,7 +39,6 @@ class PropertyKind(str, Enum):
     BOOL = "bool"
     STRING = "string"
     CHAR = "char"
-    LONG = "long"
     ENUM = "enum"
 
     # Vector / Math Types
@@ -217,10 +216,6 @@ class CharProperty(BaseProperty):
     kind: Literal[PropertyKind.CHAR] = PropertyKind.CHAR
     value: str = Field(..., min_length=1, max_length=1) # single character string
 
-class LongProperty(BaseProperty):
-    kind: Literal[PropertyKind.LONG] = PropertyKind.LONG
-    value: int
-
 class EnumProperty(BaseProperty):
     kind: Literal[PropertyKind.ENUM] = PropertyKind.ENUM
     options: list[str] = Field(default_factory=list) # list of possible enum values
@@ -375,7 +370,6 @@ Property = Annotated[
         BoolProperty,
         StringProperty,
         CharProperty,
-        LongProperty,
         EnumProperty,
 
         # Vector / Math Types
