@@ -1,6 +1,6 @@
 import "frida-il2cpp-bridge"
 
-import type { Property, Vector3 } from "./models"
+import type { BaseProperty, Property } from "./models"
 
 // A miniature component registry to avoid dereferencing freed memory.
 // getHierarchyStructure registers every component it walks past here, keyed by handle which are stable across the lifetime of the component.
@@ -37,28 +37,23 @@ function toNumber(raw: unknown): number | null {
     }
 }
 
-type ParsedValue =
-    | { kind: "float" | "int"; value: number }
-    | { kind: "bool"; value: boolean }
-    | { kind: "string"; value: string }
-    | { kind: "vector3"; value: Vector3 }
-
-const VALUE_PARSERS: Record<string, (raw: unknown) => ParsedValue> = { // Returns in the property format, as specified within models.ts
-    "System.Single": (raw) => ({ kind: "float", value: toNumber(raw) ?? 0 }),
-    "System.Double": (raw) => ({ kind: "float", value: toNumber(raw) ?? 0 }),
-    "System.Int32": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.Int64": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.UInt32": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.UInt64": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.Int16": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.UInt16": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.Byte": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.SByte": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.Boolean": (raw) => ({ kind: "bool", value: Boolean(raw) }),
-    "System.String": (raw) => ({ kind: "string", value: (raw as Il2Cpp.String).toString() }),
-    "UnityEngine.Vector3": (raw) => {
+const VALUE_PARSERS: Record<string, (raw: unknown, base: BaseProperty) => Property> = {
+    "System.Single": (raw, base) => ({ ...base, kind: "single", value: toNumber(raw) ?? 0 }),
+    "System.Double": (raw, base) => ({ ...base, kind: "float", value: toNumber(raw) ?? 0 }),
+    "System.Int32": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Int64": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.UInt32": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.UInt64": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Int16": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.UInt16": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Byte": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.SByte": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Boolean": (raw, base) => ({ ...base, kind: "bool", value: Boolean(raw) }),
+    "System.String": (raw, base) => ({ ...base, kind: "string", value: (raw as Il2Cpp.String).toString() }),
+    "UnityEngine.Vector3": (raw, base) => {
         const rawVT = raw as Il2Cpp.ValueType
         return {
+            ...base,
             kind: "vector3",
             value: {
                 x: rawVT.field<number>("x").value,
@@ -160,14 +155,13 @@ export function parseComponentProperties(component: Il2Cpp.Object): Property[] {
         if (!parse) continue
 
         try {
-            properties.push({
+            properties.push(parse(component.field(field.name).value, {
                 label: field.name,
                 is_static: false,
                 read_only: false,
                 source: "field",
                 member: field.name,
-                ...parse(component.field(field.name).value),
-            })
+            }))
         } catch (e) {
             console.warn(`Failed to read field ${field.name} of component ${componentName} (${componentType}): ${e}`)
         }
@@ -186,15 +180,14 @@ export function parseComponentProperties(component: Il2Cpp.Object): Property[] {
         try {
             const setterName = `set_${accessorName}`
             const hasSetter = componentClass.tryMethod(setterName, 1) !== null
-            properties.push({
+            properties.push(parse(component.method(getter.name, 0).invoke(), {
                 label: accessorName,
                 is_static: false,
                 read_only: !hasSetter,
                 source: "accessor",
                 getter: getter.name,
                 setter: hasSetter ? setterName : null,
-                ...parse(component.method(getter.name, 0).invoke()),
-            })
+            }))
             seenLabels.add(accessorName)
         } catch (e) {
             console.warn(`Failed to invoke getter ${getter.name} of component ${componentName} (${componentType}): ${e}`)

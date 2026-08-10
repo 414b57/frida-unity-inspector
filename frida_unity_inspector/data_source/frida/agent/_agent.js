@@ -3491,22 +3491,22 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     }
   }
   var VALUE_PARSERS = {
-    // Returns in the property format, as specified within models.ts
-    "System.Single": (raw) => ({ kind: "float", value: toNumber(raw) ?? 0 }),
-    "System.Double": (raw) => ({ kind: "float", value: toNumber(raw) ?? 0 }),
-    "System.Int32": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.Int64": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.UInt32": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.UInt64": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.Int16": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.UInt16": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.Byte": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.SByte": (raw) => ({ kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.Boolean": (raw) => ({ kind: "bool", value: Boolean(raw) }),
-    "System.String": (raw) => ({ kind: "string", value: raw.toString() }),
-    "UnityEngine.Vector3": (raw) => {
+    "System.Single": (raw, base) => ({ ...base, kind: "single", value: toNumber(raw) ?? 0 }),
+    "System.Double": (raw, base) => ({ ...base, kind: "float", value: toNumber(raw) ?? 0 }),
+    "System.Int32": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Int64": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.UInt32": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.UInt64": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Int16": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.UInt16": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Byte": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.SByte": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Boolean": (raw, base) => ({ ...base, kind: "bool", value: Boolean(raw) }),
+    "System.String": (raw, base) => ({ ...base, kind: "string", value: raw.toString() }),
+    "UnityEngine.Vector3": (raw, base) => {
       const rawVT = raw;
       return {
+        ...base,
         kind: "vector3",
         value: {
           x: rawVT.field("x").value,
@@ -3587,14 +3587,13 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       const parse = VALUE_PARSERS[field.type.name];
       if (!parse) continue;
       try {
-        properties.push({
+        properties.push(parse(component.field(field.name).value, {
           label: field.name,
           is_static: false,
           read_only: false,
           source: "field",
-          member: field.name,
-          ...parse(component.field(field.name).value)
-        });
+          member: field.name
+        }));
       } catch (e) {
         console.warn(`Failed to read field ${field.name} of component ${componentName} (${componentType}): ${e}`);
       }
@@ -3609,15 +3608,14 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       try {
         const setterName = `set_${accessorName}`;
         const hasSetter = componentClass.tryMethod(setterName, 1) !== null;
-        properties.push({
+        properties.push(parse(component.method(getter2.name, 0).invoke(), {
           label: accessorName,
           is_static: false,
           read_only: !hasSetter,
           source: "accessor",
           getter: getter2.name,
-          setter: hasSetter ? setterName : null,
-          ...parse(component.method(getter2.name, 0).invoke())
-        });
+          setter: hasSetter ? setterName : null
+        }));
         seenLabels.add(accessorName);
       } catch (e) {
         console.warn(`Failed to invoke getter ${getter2.name} of component ${componentName} (${componentType}): ${e}`);
