@@ -17,6 +17,7 @@ import "./capabilities/getComponentProperties"
 /// Data Writing
 // GameObject/component/property changing
 import "./capabilities/setGameObjectActive"
+import "./capabilities/setComponentEnabled"
 
 /*
 Design idea:

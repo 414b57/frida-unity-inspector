@@ -31,6 +31,7 @@ class Capabilities(StrEnum):
     GET_HIERARCHY_STRUCTURE = "getHierarchyStructure"
     GET_COMPONENT_PROPERTIES = "getComponentProperties"
     SET_GAMEOBJECT_ACTIVE = "setGameObjectActive"
+    SET_COMPONENT_ENABLED = "setComponentEnabled"
 
 
 # Capabilities each capability depends on
@@ -41,6 +42,7 @@ CAPABILITY_REQUIRES: dict[Capabilities, tuple[Capabilities, ...]] = {
     Capabilities.GET_HIERARCHY_STRUCTURE: (Capabilities.GET_CURRENT_SCENE,),
     Capabilities.GET_COMPONENT_PROPERTIES: (Capabilities.GET_HIERARCHY_STRUCTURE,),
     Capabilities.SET_GAMEOBJECT_ACTIVE: (),
+    Capabilities.SET_COMPONENT_ENABLED: (),
 }
 
 
@@ -65,6 +67,7 @@ _GET_CURRENT_SCENE_RETURN: TypeAdapter[Any] = TypeAdapter(Any)
 _GET_HIERARCHY_STRUCTURE_RETURN: TypeAdapter[Any] = TypeAdapter(list[HierarchyNode] | None)
 _GET_COMPONENT_PROPERTIES_RETURN: TypeAdapter[Any] = TypeAdapter(dict[str, list[Property] | None])
 _SET_GAMEOBJECT_ACTIVE_RETURN: TypeAdapter[Any] = TypeAdapter(bool)
+_SET_COMPONENT_ENABLED_RETURN: TypeAdapter[Any] = TypeAdapter(bool)
 
 
 RpcCall: TypeAlias = Callable[..., Awaitable[Any]]
@@ -89,6 +92,7 @@ class AgentRpc:
                 Capabilities.GET_HIERARCHY_STRUCTURE: self.get_hierarchy_structure,
                 Capabilities.GET_COMPONENT_PROPERTIES: self.get_component_properties,
                 Capabilities.SET_GAMEOBJECT_ACTIVE: self.set_gameobject_active,
+                Capabilities.SET_COMPONENT_ENABLED: self.set_component_enabled,
             }
 
     def dispatch(self, key: StrEnum, *args, **kwargs) -> Awaitable[Any]:
@@ -136,3 +140,7 @@ class AgentRpc:
     async def set_gameobject_active(self, gameobject_handle_ptr: str, active: bool) -> bool:
         result = await self._call(Capabilities.SET_GAMEOBJECT_ACTIVE, gameobject_handle_ptr, active)
         return _SET_GAMEOBJECT_ACTIVE_RETURN.validate_python(result)
+
+    async def set_component_enabled(self, component_handle_ptr: str, active: bool) -> bool:
+        result = await self._call(Capabilities.SET_COMPONENT_ENABLED, component_handle_ptr, active)
+        return _SET_COMPONENT_ENABLED_RETURN.validate_python(result)

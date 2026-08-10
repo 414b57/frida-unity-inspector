@@ -27,6 +27,7 @@ export const Capabilities = {
     GET_HIERARCHY_STRUCTURE: "getHierarchyStructure",
     GET_COMPONENT_PROPERTIES: "getComponentProperties",
     SET_GAMEOBJECT_ACTIVE: "setGameObjectActive",
+    SET_COMPONENT_ENABLED: "setComponentEnabled",
 } as const
 export type CapabilityName = (typeof Capabilities)[keyof typeof Capabilities]
 
@@ -38,6 +39,7 @@ export const CapabilityRequires: Record<CapabilityName, readonly CapabilityName[
     "getHierarchyStructure": ["getCurrentScene"],
     "getComponentProperties": ["getHierarchyStructure"],
     "setGameObjectActive": [],
+    "setComponentEnabled": [],
 }
 
 /** Payload shape each event carries. */
@@ -54,6 +56,7 @@ export interface CapabilitySignatures {
     "getHierarchyStructure": () => HierarchyNode[] | null | Promise<HierarchyNode[] | null>
     "getComponentProperties": (component_ids: string[]) => Record<string, Property[] | null> | Promise<Record<string, Property[] | null>>
     "setGameObjectActive": (gameobject_handle_ptr: string, active: boolean) => boolean | Promise<boolean>
+    "setComponentEnabled": (component_handle_ptr: string, active: boolean) => boolean | Promise<boolean>
 }
 
 export interface BuiltinSignatures {

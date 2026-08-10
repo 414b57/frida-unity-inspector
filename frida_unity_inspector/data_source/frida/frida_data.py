@@ -269,6 +269,11 @@ class FridaDataSource(BaseDataSource):
 
     async def set_component_enabled(self, object_id: str, component_id: str, enabled: bool) -> None:
         """TODO"""
+        self.logger.debug(f"Setting enabled state of component {component_id} on object {object_id} to {enabled}")
+        result = await self.session.call_capability(Capabilities.SET_COMPONENT_ENABLED, component_id, enabled)
+        if not result:
+            raise RuntimeError(f"Failed to set enabled state of component {component_id} on object {object_id} to {enabled}")
+        self.logger.debug(f"Successfully set enabled state of component {component_id} on object {object_id} to {enabled}")
 
     async def set_property(self, object_id: str, component_id: str, label: str, value: Any) -> Property:
         """TODO"""

@@ -125,5 +125,11 @@ CAPABILITIES: list[Call] = [
         "setGameObjectActive",
         bool,
         args=(Arg("gameobject_handle_ptr", str), Arg("active", bool)),
+    ),
+    Call(
+        "SET_COMPONENT_ENABLED",
+        "setComponentEnabled",
+        bool,
+        args=(Arg("component_handle_ptr", str), Arg("active", bool))
     )
 ]
