@@ -161,8 +161,8 @@ class GameObjectData(BaseModel):
 class Component(BaseModel):
     """One component attached to a GameObject (Transform, a MonoBehaviour, ...)."""
 
-    id: str
-    name: str
+    id: str # handle
+    name: str # The display name of the component, e.g. "Transform" or "Rigidbody".
     type: str
     icon: IconName = "cube"
     # None -> component has no enable checkbox (e.g. Transform).

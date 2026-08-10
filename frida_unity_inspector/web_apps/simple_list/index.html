@@ -454,7 +454,7 @@
         function updateComponentHeader(entry, objectId, component) {
             entry.objectId = objectId;
             entry.nameEl.textContent = component.name;
-            entry.typeEl.textContent = `  (${component.type})`;
+            entry.typeEl.textContent = `    id=${component.id} | type=${component.type}`;
             const hasToggle = component.enabled !== null && component.enabled !== undefined;
             entry.enabledCheckbox.style.display = hasToggle ? "" : "none";
             if (hasToggle && document.activeElement !== entry.enabledCheckbox) {
@@ -488,7 +488,7 @@
             summary.appendChild(document.createTextNode(" "));
             const nameEl = el("span", null, component.name);
             summary.appendChild(nameEl);
-            const typeEl = el("span", "node-meta", `  (${component.type})`);
+            const typeEl = el("span", "node-meta", `    id=${component.id} | type=${component.type}`);
             summary.appendChild(typeEl);
             details.appendChild(summary);
 
