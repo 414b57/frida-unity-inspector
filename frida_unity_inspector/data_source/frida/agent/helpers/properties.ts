@@ -420,7 +420,7 @@ export function parseComponentProperties(component: Il2Cpp.Object): Property[] {
         }
         const parse = resolveParser(field.type, baseComponentClass)
         if (!parse) { // Only read fields whose type we can actually render.
-            console.warn(`No parser for field ${field.name} of component ${componentName} (${componentType}) with type ${field.type.name}`)
+            // console.warn(`No parser for field ${field.name} of component ${componentName} (${componentType}) with type ${field.type.name}`)
             continue
         }
 
