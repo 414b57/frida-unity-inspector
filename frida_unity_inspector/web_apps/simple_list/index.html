@@ -179,8 +179,8 @@
             return e;
         }
 
-        function showError(container, err) {
-            container.replaceChildren(el("div", "error", `Failed to load: ${err.message}`));
+        function showError(container, level, err) {
+            container.replaceChildren(el("div", "error", `${level} - Failed to load: ${err.message}`));
         }
 
         function flash(element, ok) {
@@ -347,7 +347,7 @@
             }
 
             if (kind === "bounds" || kind === "boundsint") {
-                const keys = kind === "bounds" ? ["center", "size"] : ["position", "size"];
+                const keys = kind === "bounds" ? ["center", "extent"] : ["position", "size"];
                 const fields = ["x", "y", "z"];
                 const wrap = el("span", "field-group");
                 const groups = {};
@@ -362,6 +362,7 @@
                     getValue: () => Object.fromEntries(keys.map(k => [k, groups[k].getValue()])),
                     setValue: (value) => { for (const key of keys) groups[key].setValue(value[key]); },
                 };
+                // fixed:
             }
 
             // gradient / array / dictionary / object: edit as raw JSON.
@@ -673,7 +674,7 @@
             const ctxEl = document.getElementById("game-context");
             const sceneEl = document.getElementById("current-scene");
 
-            fetchJson("/api/status").then(s => renderStatus(statusEl, s)).catch(e => showError(statusEl, e));
+            fetchJson("/api/status").then(s => renderStatus(statusEl, s)).catch(e => showError(statusEl, "Status", e));
 
             // Load the game context first so the scene tree can show layer names.
             try {
@@ -682,14 +683,14 @@
                 renderGameContext(ctxEl, ctx);
             } catch (e) {
                 layerNames = {};
-                showError(ctxEl, e);
+                showError(ctxEl, "Game Context", e);
             }
 
             try {
                 applyScene(await fetchJson("/api/current_scene"), true);
             } catch (e) {
                 sceneRootsWrap = null; // showError blows away the skeleton; rebuild it next time
-                showError(sceneEl, e);
+                showError(sceneEl, "Current Scene", e);
             }
         }
 
