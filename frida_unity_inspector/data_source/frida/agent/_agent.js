@@ -2936,7 +2936,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
   })(Il2Cpp2 || (Il2Cpp2 = {}));
   var Il2Cpp2;
   (function(Il2Cpp3) {
-    class String extends NativeStruct {
+    class String2 extends NativeStruct {
       /** Gets the content of this string. */
       get content() {
         return Il2Cpp3.exports.stringGetChars(this).readUtf16String(this.length);
@@ -2965,7 +2965,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
         return this.isNull() ? "null" : `"${this.content}"`;
       }
     }
-    Il2Cpp3.String = String;
+    Il2Cpp3.String = String2;
     function string(content) {
       return new Il2Cpp3.String(Il2Cpp3.exports.stringNew(Memory.allocUtf8String(content ?? "")));
     }
@@ -3482,6 +3482,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
   function toNumber(raw) {
     if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
     if (typeof raw === "bigint") return Number(raw);
+    if (raw instanceof Int64 || raw instanceof UInt64) return raw.toNumber();
     try {
       const underlying = raw.field("value__").value;
       const n = Number(underlying);
@@ -3491,18 +3492,58 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     }
   }
   var VALUE_PARSERS = {
-    "System.Single": (raw, base) => ({ ...base, kind: "single", value: toNumber(raw) ?? 0 }),
-    "System.Double": (raw, base) => ({ ...base, kind: "float", value: toNumber(raw) ?? 0 }),
-    "System.Int32": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.Int64": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.UInt32": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.UInt64": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.Int16": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
-    "System.UInt16": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    /// Basic / primitive types.
+    // int
     "System.Byte": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
     "System.SByte": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Int16": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Int32": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.Int64": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    // 02:36:17.418  INFO      fui.utils.frida_injector   [agent] Parsing field longProperty of component DataTestScript (DataTestScript) with type System.Int64
+    "System.UInt16": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.UInt32": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    "System.UInt64": (raw, base) => ({ ...base, kind: "int", value: toNumber(raw) ?? 0 }),
+    // float
+    "System.Single": (raw, base) => ({ ...base, kind: "float", value: toNumber(raw) ?? 0 }),
+    // double
+    "System.Double": (raw, base) => ({ ...base, kind: "double", value: toNumber(raw) ?? 0 }),
+    // bool
     "System.Boolean": (raw, base) => ({ ...base, kind: "bool", value: Boolean(raw) }),
+    // string
     "System.String": (raw, base) => ({ ...base, kind: "string", value: raw.toString() }),
+    // char
+    "System.Char": (raw, base) => ({ ...base, kind: "string", value: String.fromCharCode(toNumber(raw) ?? 0) }),
+    // Enum
+    "System.Enum": (raw, base) => {
+      const rawVT = raw;
+      const value = toNumber(rawVT.field("value__").value) ?? 0;
+      const enumType = rawVT.box().class;
+      const options = {};
+      for (const field of enumType.fields) {
+        if (field.isStatic && field.type.name.endsWith(enumType.name)) {
+          options[field.name] = toNumber(field.value) ?? 0;
+        }
+      }
+      return {
+        ...base,
+        kind: "enum",
+        options,
+        value
+      };
+    },
+    /// Vector / Math Types
+    // Vec2/3/4
+    "UnityEngine.Vector2": (raw, base) => {
+      const rawVT = raw;
+      return {
+        ...base,
+        kind: "vector2",
+        value: {
+          x: rawVT.field("x").value,
+          y: rawVT.field("y").value
+        }
+      };
+    },
     "UnityEngine.Vector3": (raw, base) => {
       const rawVT = raw;
       return {
@@ -3514,8 +3555,212 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
           z: rawVT.field("z").value
         }
       };
+    },
+    "UnityEngine.Vector4": (raw, base) => {
+      const rawVT = raw;
+      return {
+        ...base,
+        kind: "vector4",
+        value: {
+          x: rawVT.field("x").value,
+          y: rawVT.field("y").value,
+          z: rawVT.field("z").value,
+          w: rawVT.field("w").value
+        }
+      };
+    },
+    // VecInt2/3
+    "UnityEngine.Vector2Int": (raw, base) => {
+      const rawVT = raw;
+      return {
+        ...base,
+        kind: "vector2int",
+        value: {
+          x: rawVT.field("m_X").value,
+          y: rawVT.field("m_Y").value
+        }
+      };
+    },
+    "UnityEngine.Vector3Int": (raw, base) => {
+      const rawVT = raw;
+      return {
+        ...base,
+        kind: "vector3int",
+        value: {
+          x: rawVT.field("m_X").value,
+          y: rawVT.field("m_Y").value,
+          z: rawVT.field("m_Z").value
+        }
+      };
+    },
+    // Quaternion
+    "UnityEngine.Quaternion": (raw, base) => {
+      const rawVT = raw;
+      return {
+        ...base,
+        kind: "quaternion",
+        value: {
+          x: rawVT.field("x").value,
+          y: rawVT.field("y").value,
+          z: rawVT.field("z").value,
+          w: rawVT.field("w").value
+        }
+      };
+    },
+    // Matrix4x4
+    "UnityEngine.Matrix4x4": (raw, base) => {
+      const rawVT = raw;
+      return {
+        ...base,
+        kind: "matrix4x4",
+        value: {
+          m00: rawVT.field("m00").value,
+          m01: rawVT.field("m01").value,
+          m02: rawVT.field("m02").value,
+          m03: rawVT.field("m03").value,
+          m10: rawVT.field("m10").value,
+          m11: rawVT.field("m11").value,
+          m12: rawVT.field("m12").value,
+          m13: rawVT.field("m13").value,
+          m20: rawVT.field("m20").value,
+          m21: rawVT.field("m21").value,
+          m22: rawVT.field("m22").value,
+          m23: rawVT.field("m23").value,
+          m30: rawVT.field("m30").value,
+          m31: rawVT.field("m31").value,
+          m32: rawVT.field("m32").value,
+          m33: rawVT.field("m33").value
+        }
+      };
+    },
+    // Rect/RectInt
+    "UnityEngine.Rect": (raw, base) => {
+      const rawVT = raw;
+      return {
+        ...base,
+        kind: "rect",
+        value: {
+          x: rawVT.field("m_XMin").value,
+          y: rawVT.field("m_YMin").value,
+          width: rawVT.field("m_Width").value,
+          height: rawVT.field("m_Height").value
+        }
+      };
+    },
+    "UnityEngine.RectInt": (raw, base) => {
+      const rawVT = raw;
+      return {
+        ...base,
+        kind: "rectint",
+        value: {
+          x: rawVT.field("m_XMin").value,
+          y: rawVT.field("m_YMin").value,
+          width: rawVT.field("m_Width").value,
+          height: rawVT.field("m_Height").value
+        }
+      };
+    },
+    // Bounds/BoundsInt
+    "UnityEngine.Bounds": (raw, base) => {
+      const rawVT = raw;
+      const center = rawVT.field("m_Center").value;
+      const extents = rawVT.field("m_Extents").value;
+      return {
+        ...base,
+        kind: "bounds",
+        value: {
+          center: {
+            x: center.field("x").value,
+            y: center.field("y").value,
+            z: center.field("z").value
+          },
+          extent: {
+            x: extents.field("x").value,
+            y: extents.field("y").value,
+            z: extents.field("z").value
+          }
+        }
+      };
+    },
+    "UnityEngine.BoundsInt": (raw, base) => {
+      const rawVT = raw;
+      const position = rawVT.field("m_Position").value;
+      const size = rawVT.field("m_Size").value;
+      return {
+        ...base,
+        kind: "boundsint",
+        value: {
+          position: {
+            x: position.field("m_X").value,
+            y: position.field("m_Y").value,
+            z: position.field("m_Z").value
+          },
+          size: {
+            x: size.field("m_X").value,
+            y: size.field("m_Y").value,
+            z: size.field("m_Z").value
+          }
+        }
+      };
+    },
+    /// Colour types
+    // Color/Color32
+    "UnityEngine.Color": (raw, base) => {
+      const rawVT = raw;
+      return {
+        ...base,
+        kind: "color",
+        value: {
+          r: rawVT.field("r").value,
+          g: rawVT.field("g").value,
+          b: rawVT.field("b").value,
+          a: rawVT.field("a").value
+        }
+      };
+    },
+    "UnityEngine.Color32": (raw, base) => {
+      const rawVT = raw;
+      return {
+        ...base,
+        kind: "color32",
+        value: {
+          r: rawVT.field("r").value,
+          g: rawVT.field("g").value,
+          b: rawVT.field("b").value,
+          a: rawVT.field("a").value
+        }
+      };
+    },
+    // Gradient
+    // TODO - Implement Gradient parsing
+    "UnityEngine.Gradient": (raw, base) => {
+      return {
+        ...base,
+        kind: "gradient",
+        value: "TODO - Implement Gradient parsing",
+        read_only: true
+      };
+    },
+    /// Array / Collection types
+    // TODO - Implement array/collection parsing
+    /// Object / Reference types
+    "UnityEngine.Object": (raw, base) => {
+      const obj = raw;
+      return {
+        ...base,
+        kind: "object",
+        value: obj,
+        // Special case - Override the read_only flag to always be true. Dont allow editing.
+        read_only: true
+      };
     }
   };
+  function resolveParser(type) {
+    const direct = VALUE_PARSERS[type.name];
+    if (direct) return direct;
+    if (type.class.isEnum) return VALUE_PARSERS["System.Enum"];
+    return void 0;
+  }
   var CUSTOM_COMPONENT_PARSERS = {
     // "UnityEngine.Transform": (component) => [...],
     "UnityEngine.MeshRenderer": (component) => {
@@ -3584,8 +3829,10 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       if (field.isStatic) {
         continue;
       }
-      const parse = VALUE_PARSERS[field.type.name];
-      if (!parse) continue;
+      const parse = resolveParser(field.type);
+      if (!parse) {
+        continue;
+      }
       try {
         properties.push(parse(component.field(field.name).value, {
           label: field.name,
@@ -3603,8 +3850,10 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       if (getter2.isStatic || getter2.parameterCount !== 0 || !getter2.name.startsWith("get_")) continue;
       const accessorName = getter2.name.substring(4);
       if (accessorName.length === 0 || seenLabels.has(accessorName)) continue;
-      const parse = VALUE_PARSERS[getter2.returnType.name];
-      if (!parse) continue;
+      const parse = resolveParser(getter2.returnType);
+      if (!parse) {
+        continue;
+      }
       try {
         const setterName = `set_${accessorName}`;
         const hasSetter = componentClass.tryMethod(setterName, 1) !== null;
