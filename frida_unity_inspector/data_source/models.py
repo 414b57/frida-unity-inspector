@@ -308,7 +308,7 @@ class RectIntProperty(BaseProperty):
 
 class Bounds(BaseModel):
     center: Vector3
-    size: Vector3
+    extent: Vector3
 
 class BoundsProperty(BaseProperty):
     kind: Literal[PropertyKind.BOUNDS] = PropertyKind.BOUNDS

@@ -338,7 +338,7 @@ export interface RectIntProperty {
 
 export interface Bounds {
     center: Vector3
-    size: Vector3
+    extent: Vector3
 }
 
 export interface BoundsProperty {
