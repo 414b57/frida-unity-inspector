@@ -306,14 +306,26 @@ const VALUE_PARSERS: Record<string, (raw: unknown, base: BaseProperty) => Proper
             // Special case - Override the read_only flag to always be true. Dont allow editing.
             read_only: true,
         }
+    },
+    "UnityEngine.Component": (raw, base) => {
+        const obj = raw as Il2Cpp.Object
+        return {
+            ...base,
+            kind: "component",
+            value: obj,
+            // Special case - Override the read_only flag to always be true. Dont allow editing.
+            read_only: true,
+        }
     }
 }
 
-function resolveParser(type: Il2Cpp.Type): ((raw: unknown, base: BaseProperty) => Property) | undefined {
+function resolveParser(type: Il2Cpp.Type, baseComponentClass: Il2Cpp.Class): ((raw: unknown, base: BaseProperty) => Property) | undefined {
     const direct = VALUE_PARSERS[type.name]
     if (direct) return direct
     // field.type.name returns the name of enum (DataTestScript.ExampleEnum), which wont match via direct `System.Enum` lookup. So we need to check if the type is an enum and return the enum parser if so.
     if (type.class.isEnum) return VALUE_PARSERS["System.Enum"]
+    // Check if obj is a componenet, if so call the component parser. This is a bit of a hack, but it works for now. TODO - Improve this to be more robust.
+    if (type.class.isSubclassOf(baseComponentClass, true)) return VALUE_PARSERS["UnityEngine.Component"]
     return undefined
 }
 
@@ -393,6 +405,8 @@ const CUSTOM_COMPONENT_PARSERS: Record<string, (component: Il2Cpp.Object) => Pro
 
 /** Full reflection scan of one component: field-backed, accessor-backed, then custom per-type extras. */
 export function parseComponentProperties(component: Il2Cpp.Object): Property[] {
+    const baseComponentClass = Il2Cpp.domain.assembly("UnityEngine.CoreModule").image.class("UnityEngine.Component")
+
     const componentClass = component.class
     const componentName = componentClass.name
     const componentType = `${componentClass.namespace ? componentClass.namespace + "." : ""}${componentClass.name}`
@@ -404,9 +418,9 @@ export function parseComponentProperties(component: Il2Cpp.Object): Property[] {
         if (field.isStatic) {
             continue // TODO - Implement support for static. rn does `04:36:43.983  WARNING   fui.utils.frida_injector   [agent] Failed to read field kMinAperture of component "Main Camera" (Camera): Il2CppError: couldn't find non-static field kMinAperture in hierarchy of class UnityEngine.Camera`
         }
-        const parse = resolveParser(field.type)
+        const parse = resolveParser(field.type, baseComponentClass)
         if (!parse) { // Only read fields whose type we can actually render.
-            // console.warn(`No parser for field ${field.name} of component ${componentName} (${componentType}) with type ${field.type.name}`)
+            console.warn(`No parser for field ${field.name} of component ${componentName} (${componentType}) with type ${field.type.name}`)
             continue
         }
 
@@ -430,7 +444,7 @@ export function parseComponentProperties(component: Il2Cpp.Object): Property[] {
         if (getter.isStatic || getter.parameterCount !== 0 || !getter.name.startsWith("get_")) continue
         const accessorName = getter.name.substring(4)
         if (accessorName.length === 0 || seenLabels.has(accessorName)) continue
-        const parse = resolveParser(getter.returnType)
+        const parse = resolveParser(getter.returnType, baseComponentClass)
         if (!parse) { // Only invoke getters whose result we can actually render.
             // console.warn(`No parser for getter ${getter.name} of component ${componentName} (${componentType}) with return type ${getter.returnType.name}`)
             continue

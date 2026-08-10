@@ -3753,12 +3753,23 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
         // Special case - Override the read_only flag to always be true. Dont allow editing.
         read_only: true
       };
+    },
+    "UnityEngine.Component": (raw, base) => {
+      const obj = raw;
+      return {
+        ...base,
+        kind: "component",
+        value: obj,
+        // Special case - Override the read_only flag to always be true. Dont allow editing.
+        read_only: true
+      };
     }
   };
-  function resolveParser(type) {
+  function resolveParser(type, baseComponentClass) {
     const direct = VALUE_PARSERS[type.name];
     if (direct) return direct;
     if (type.class.isEnum) return VALUE_PARSERS["System.Enum"];
+    if (type.class.isSubclassOf(baseComponentClass, true)) return VALUE_PARSERS["UnityEngine.Component"];
     return void 0;
   }
   var CUSTOM_COMPONENT_PARSERS = {
@@ -3821,6 +3832,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     }
   };
   function parseComponentProperties(component) {
+    const baseComponentClass = Il2Cpp.domain.assembly("UnityEngine.CoreModule").image.class("UnityEngine.Component");
     const componentClass = component.class;
     const componentName = componentClass.name;
     const componentType = `${componentClass.namespace ? componentClass.namespace + "." : ""}${componentClass.name}`;
@@ -3829,8 +3841,9 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       if (field.isStatic) {
         continue;
       }
-      const parse = resolveParser(field.type);
+      const parse = resolveParser(field.type, baseComponentClass);
       if (!parse) {
+        console.warn(`No parser for field ${field.name} of component ${componentName} (${componentType}) with type ${field.type.name}`);
         continue;
       }
       try {
@@ -3850,7 +3863,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       if (getter2.isStatic || getter2.parameterCount !== 0 || !getter2.name.startsWith("get_")) continue;
       const accessorName = getter2.name.substring(4);
       if (accessorName.length === 0 || seenLabels.has(accessorName)) continue;
-      const parse = resolveParser(getter2.returnType);
+      const parse = resolveParser(getter2.returnType, baseComponentClass);
       if (!parse) {
         continue;
       }

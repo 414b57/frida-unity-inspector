@@ -65,6 +65,7 @@ class PropertyKind(str, Enum):
 
     # Object / Reference Types
     OBJECT = "object"
+    COMPONENT = "component" # A component reference (e.g. Transform, Rigidbody, ...). This is a special case of OBJECT that is known to be a component.
 
 class PropertySource(str, Enum):
     """What backs a property on the native side. Determines how a value is read, and how an edit gets written back."""
@@ -361,6 +362,10 @@ class ObjectProperty(BaseProperty):
     kind: Literal[PropertyKind.OBJECT] = PropertyKind.OBJECT
     value: Any # TODO - Not sure how to represent this better.
 
+class ComponentProperty(BaseProperty):
+    kind: Literal[PropertyKind.COMPONENT] = PropertyKind.COMPONENT
+    value: Any # TODO - Look into | Maybe make this `Component`. But complicated. Probs just treate same as obj with a `{"handle":"0x24c28e745c0"}` and just let the UI find corresponding componenet in scene and show it.
+
 Property = Annotated[
     Union[
         # Basic / Primitive Types
@@ -396,6 +401,7 @@ Property = Annotated[
 
         # Object / Reference Types
         ObjectProperty,
+        ComponentProperty
     ],
     Field(discriminator="kind")
 ]
