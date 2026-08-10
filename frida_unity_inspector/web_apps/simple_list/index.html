@@ -294,13 +294,17 @@
 
             if (kind === "enum") {
                 const select = el("select");
-                for (const option of prop.options) {
-                    const opt = el("option", null, option);
-                    opt.value = option;
-                    if (option === prop.value) opt.selected = true;
+                for (const [optionName, optionValue] of Object.entries(prop.options)) {
+                    const opt = el("option", null, optionName);
+                    opt.value = optionValue;
+                    if (optionValue === prop.value) opt.selected = true;
                     select.appendChild(opt);
                 }
-                return { node: select, getValue: () => select.value, setValue: (value) => setInputValue(select, value) };
+                return {
+                    node: select,
+                    getValue: () => parseInt(select.value, 10),
+                    setValue: (value) => setInputValue(select, value),
+                };
             }
 
             if (kind in FIELD_SPECS) {

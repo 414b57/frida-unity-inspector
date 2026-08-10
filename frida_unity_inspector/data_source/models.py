@@ -218,8 +218,8 @@ class CharProperty(BaseProperty):
 
 class EnumProperty(BaseProperty):
     kind: Literal[PropertyKind.ENUM] = PropertyKind.ENUM
-    options: list[str] = Field(default_factory=list) # list of possible enum values
-    value: str # current enum value
+    options: dict[str, int] = Field(default_factory=dict) # dict of possible enum values (key = name, value = int value)
+    value: int # current enum value
 
 # Vector / Math Types
 class Vector2(BaseModel):

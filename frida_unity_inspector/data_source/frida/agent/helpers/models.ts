@@ -155,8 +155,8 @@ export interface EnumProperty {
     getter?: string | null
     setter?: string | null
     kind?: "enum"
-    options?: string[]
-    value: string
+    options?: Record<string, number>
+    value: number
 }
 
 export interface Vector2 {
