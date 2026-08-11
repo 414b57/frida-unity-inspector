@@ -264,7 +264,8 @@ class FridaDataSource(BaseDataSource):
         self.logger.debug(f"Setting active state of object {object_id} to {active}")
         result = await self.session.call_capability(Capabilities.SET_GAMEOBJECT_ACTIVE, object_id, active)
         if not result:
-            raise RuntimeError(f"Failed to set active state of object {object_id} to {active}")
+            self.logger.error(f"Failed to set active state of object {object_id} to {active}")
+            return result
         self.logger.debug(f"Successfully set active state of object {object_id} to {active}")
 
     async def set_component_enabled(self, object_id: str, component_id: str, enabled: bool) -> None:
@@ -272,7 +273,8 @@ class FridaDataSource(BaseDataSource):
         self.logger.debug(f"Setting enabled state of component {component_id} on object {object_id} to {enabled}")
         result = await self.session.call_capability(Capabilities.SET_COMPONENT_ENABLED, component_id, enabled)
         if not result:
-            raise RuntimeError(f"Failed to set enabled state of component {component_id} on object {object_id} to {enabled}")
+            self.logger.error(f"Failed to set enabled state of component {component_id} on object {object_id} to {enabled}")
+            return
         self.logger.debug(f"Successfully set enabled state of component {component_id} on object {object_id} to {enabled}")
 
     async def set_property(self, object_id: str, component_id: str, property: Property) -> Property:
@@ -280,6 +282,7 @@ class FridaDataSource(BaseDataSource):
         self.logger.debug(f"Setting property {property.label} of component {component_id} on object {object_id} to {property.value}")
         result = await self.session.call_capability(Capabilities.SET_PROPERTY_VALUE, component_id, property)
         if result is None:
-            raise RuntimeError(f"Failed to set property {property.label} of component {component_id} on object {object_id} to {property.value}")
+            self.logger.error(f"Failed to set property {property.label} of component {component_id} on object {object_id} to {property.value}")
+            return result
         self.logger.debug(f"Successfully set property {property.label} of component {component_id} on object {object_id} to {property.value} (result: {result.value})")
         return result
