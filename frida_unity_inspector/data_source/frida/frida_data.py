@@ -164,7 +164,7 @@ class FridaDataSource(BaseDataSource):
             running=self._running,
             message=f"FridaDataSource is running - tick took {finish-start:.6f}s",
         )
-        self.logger.debug(f"Ping round-trip time: {round_trip_time:.6f}s, python-to-ts delay: {python_to_ts_delay:.6f}s, ts-to-python delay: {stop-ts_time:.6f}s, tick took {finish-start:.6f}s")
+        self.logger.trace(f"Ping round-trip time: {round_trip_time:.6f}s, python-to-ts delay: {python_to_ts_delay:.6f}s, ts-to-python delay: {stop-ts_time:.6f}s, tick took {finish-start:.6f}s")
         self._emit_update(StatusUpdate(status=self.current_status))
         self._last_tick_time = time.time()-start
 
