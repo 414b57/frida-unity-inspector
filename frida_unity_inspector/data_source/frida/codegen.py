@@ -405,6 +405,14 @@ def render_protocol_py(reg: Registry, spec: types.ModuleType) -> str:
     for call, _ in all_calls:
         out.append(f"_{call.key}_RETURN: TypeAdapter[Any] = TypeAdapter({return_types[call.key]})")
 
+    # Define TypeAdapters for serializing RPC arguments to JSON-safe values before they cross the frida boundary
+    out.append("")
+    out.append("")
+    out.append("# TypeAdapters for serializing RPC arguments (frida json.dumps can't handle pydantic models)")
+    for call, _ in all_calls:
+        for name, annotation in arg_types[call.key]:
+            out.append(f"_{call.key}_ARG_{name.upper()}: TypeAdapter[Any] = TypeAdapter({annotation})")
+
     out.append("")
     out.append("")
     # Define the RpcCall type alias, which represents a callable that takes any arguments and returns an Awaitable of any type. This is used for typing the RPC call function passed to the AgentRpc class.
@@ -432,7 +440,10 @@ def render_protocol_py(reg: Registry, spec: types.ModuleType) -> str:
     out.append("        return self._dispatch[key](*args, **kwargs)")
     for call, enum in all_calls:
         params = "".join(f", {name}: {annotation}" for name, annotation in arg_types[call.key])
-        passed = "".join(f", {name}" for name, _ in arg_types[call.key])
+        passed = "".join(
+            f', _{call.key}_ARG_{name.upper()}.dump_python({name}, mode="json")'
+            for name, _ in arg_types[call.key]
+        )
         out.append("")
         out.append(f"    async def {snake_case(call.key)}(self{params}) -> {return_types[call.key]}:")
         out.append(f"        result = await self._call({enum}.{call.key}{passed})")
