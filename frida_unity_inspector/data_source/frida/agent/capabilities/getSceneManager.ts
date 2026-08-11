@@ -12,5 +12,5 @@ defineCapability({
     name: Capabilities.GET_SCENE_MANAGER,
     detect: () => sceneManagerClass() !== null,
 
-    implementation: () => Il2Cpp.perform(() => sceneManagerClass()),
+    implementation: () => Il2Cpp.perform(() => sceneManagerClass(), "main"),
 })

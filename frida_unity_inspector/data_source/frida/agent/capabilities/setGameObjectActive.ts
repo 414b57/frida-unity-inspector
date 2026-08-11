@@ -23,5 +23,5 @@ defineCapability({
             }
             method?.invoke(active);
             return true;
-        }),
+        }, "main"),
 })

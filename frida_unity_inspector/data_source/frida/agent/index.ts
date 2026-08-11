@@ -67,7 +67,7 @@ function bootstrap() {
 
         console.log("[+] Capabilities detected:", JSON.stringify(capabilitySnapshot))
         sendEvent(Events.AGENT_READY, capabilitySnapshot)
-    })
+    }, "main")
 }
 
 setTimeout(bootstrap, 3000)

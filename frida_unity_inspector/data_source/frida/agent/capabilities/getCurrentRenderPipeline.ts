@@ -21,6 +21,6 @@ defineCapability({
             if (pipeline.isNull()) return null
             // if not null then its URP/HDRP/SRP
             return pipeline.class.name
-        })
+        }, "main")
     },
 })

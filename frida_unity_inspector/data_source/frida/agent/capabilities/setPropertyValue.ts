@@ -14,5 +14,5 @@ defineCapability({
     implementation: (component_handle_ptr: string, property: Property) =>
         Il2Cpp.perform(() => {
             return writeComponentProperty(component_handle_ptr, property);
-        })
+        }, "main"),
 })
