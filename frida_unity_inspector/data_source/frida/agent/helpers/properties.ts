@@ -484,9 +484,39 @@ export function parseComponentProperties(component: Il2Cpp.Object): Property[] {
 
 /// Writers
 // Used to convert structured Property values back into raw Il2Cpp values for writing back to the game. Each writer is keyed by the type name of the value it can write.
-const VALUE_WRITERS: Record<string, (property: Property) => any> = {
+const VALUE_WRITERS: Record<string, (property: Property, writeType: Il2Cpp.Type) => any> = {
     /// Basic / primitive types.
-    // TODO
+    "System.Byte": (property) => property.value,
+    "System.SByte": (property) => property.value,
+    "System.Int16": (property) => property.value,
+    "System.Int32": (property) => property.value,
+    "System.Int64": (property) => property.value,
+    "System.UInt16": (property) => property.value,
+    "System.UInt32": (property) => property.value,
+    "System.UInt64": (property) => property.value,
+    // float
+    "System.Single": (property) => property.value,
+    // double
+    "System.Double": (property) => property.value,
+    // bool
+    "System.Boolean": (property) => property.value,
+    // string
+    "System.String": (property) => Il2Cpp.string(property.value),
+    // char
+    "System.Char": (property) => property.value.charCodeAt(0),
+    // Enum
+    "System.Enum": (property, writeType) => {
+        const size = writeType.class.valueTypeSize
+        const handle = Memory.alloc(size)
+        const v = property.value as number
+        switch (size) {
+            case 1: handle.writeS8(v); break
+            case 2: handle.writeS16(v); break
+            case 8: handle.writeS64(v); break
+            default: handle.writeS32(v); break // 4-byte int is the common case
+        }
+        return new Il2Cpp.ValueType(handle, writeType)
+    },
 
     /// Vector / Math Types
     "UnityEngine.Vector3": (property) => {
@@ -509,7 +539,7 @@ const VALUE_WRITERS: Record<string, (property: Property) => any> = {
     // TODO
 }
 
-function resolveWriter(type: Il2Cpp.Type, baseComponentClass: Il2Cpp.Class): ((property: Property) => any) | undefined {
+function resolveWriter(type: Il2Cpp.Type, baseComponentClass: Il2Cpp.Class): ((property: Property, writeType: Il2Cpp.Type) => any) | undefined {
     const direct = VALUE_WRITERS[type.name]
     if (direct) return direct
     // field.type.name returns the name of enum (DataTestScript.ExampleEnum), which wont match via direct `System.Enum` lookup. So we need to check if the type is an enum and return the enum writer if so.
@@ -617,7 +647,7 @@ export function writeComponentProperty(componentHandleId: string, property: Prop
 
     if (field) {
         try {
-            field.value = writer(property)
+            field.value = writer(property, writeType)
             return parser(field.value, property)
         } catch (e) {
             console.warn(`writeComponentProperty: Failed to write field ${field.name} on component ${component.class.name}: ${e}`)
@@ -625,7 +655,7 @@ export function writeComponentProperty(componentHandleId: string, property: Prop
         }
     } else if (setter) {
         try {
-            setter.invoke(writer(property))
+            setter.invoke(writer(property, writeType))
             return parser(getter!.invoke(), property)
         } catch (e) {
             console.warn(`writeComponentProperty: Failed to invoke setter ${setter.name} on component ${component.class.name}: ${e}`)

@@ -3899,7 +3899,45 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
   }
   var VALUE_WRITERS = {
     /// Basic / primitive types.
-    // TODO
+    "System.Byte": (property) => property.value,
+    "System.SByte": (property) => property.value,
+    "System.Int16": (property) => property.value,
+    "System.Int32": (property) => property.value,
+    "System.Int64": (property) => property.value,
+    "System.UInt16": (property) => property.value,
+    "System.UInt32": (property) => property.value,
+    "System.UInt64": (property) => property.value,
+    // float
+    "System.Single": (property) => property.value,
+    // double
+    "System.Double": (property) => property.value,
+    // bool
+    "System.Boolean": (property) => property.value,
+    // string
+    "System.String": (property) => Il2Cpp.string(property.value),
+    // char
+    "System.Char": (property) => property.value.charCodeAt(0),
+    // Enum
+    "System.Enum": (property, writeType) => {
+      const size = writeType.class.valueTypeSize;
+      const handle = Memory.alloc(size);
+      const v = property.value;
+      switch (size) {
+        case 1:
+          handle.writeS8(v);
+          break;
+        case 2:
+          handle.writeS16(v);
+          break;
+        case 8:
+          handle.writeS64(v);
+          break;
+        default:
+          handle.writeS32(v);
+          break;
+      }
+      return new Il2Cpp.ValueType(handle, writeType);
+    },
     /// Vector / Math Types
     "UnityEngine.Vector3": (property) => {
       const casted = property;
@@ -4008,7 +4046,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     }
     if (field) {
       try {
-        field.value = writer(property);
+        field.value = writer(property, writeType);
         return parser(field.value, property);
       } catch (e) {
         console.warn(`writeComponentProperty: Failed to write field ${field.name} on component ${component.class.name}: ${e}`);
@@ -4016,7 +4054,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       }
     } else if (setter) {
       try {
-        setter.invoke(writer(property));
+        setter.invoke(writer(property, writeType));
         return parser(getter2.invoke(), property);
       } catch (e) {
         console.warn(`writeComponentProperty: Failed to invoke setter ${setter.name} on component ${component.class.name}: ${e}`);
