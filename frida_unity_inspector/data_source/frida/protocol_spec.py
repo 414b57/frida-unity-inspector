@@ -135,7 +135,7 @@ CAPABILITIES: list[Call] = [
     Call(
         "SET_PROPERTY_VALUE",
         "setPropertyValue",
-        Property,
+        Optional[Property],
         args=(Arg("component_handle_ptr", str), Arg("property", Property))
     )
 ]

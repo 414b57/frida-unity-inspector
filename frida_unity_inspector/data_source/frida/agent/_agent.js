@@ -3965,7 +3965,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       }
       writeType = field.type;
       getType = field.type;
-    } else if (property.source === "accessor" && property.is_static && property.setter) {
+    } else if (property.source === "accessor" && property.is_static && property.setter && property.getter) {
       setter = component.class.tryMethod(property.setter, 1);
       if (!setter) {
         console.warn(`writeComponentProperty: Unknown static setter ${property.setter} on component ${component.class.name}`);
@@ -3978,7 +3978,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
         return null;
       }
       getType = getter2.returnType;
-    } else if (property.source === "accessor" && !property.is_static && property.setter) {
+    } else if (property.source === "accessor" && !property.is_static && property.setter && property.getter) {
       setter = component.tryMethod(property.setter, 1);
       if (!setter) {
         console.warn(`writeComponentProperty: Unknown setter ${property.setter} on component ${component.class.name}`);
@@ -3992,7 +3992,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       }
       getType = getter2.returnType;
     } else {
-      console.warn(`writeComponentProperty: Unknown property source ${property.source} or missing member/setter on component ${component.class.name}`);
+      console.warn(`writeComponentProperty: Unknown property source ${property.source} or missing member/setter/getter on component ${component.class.name}`);
       return null;
     }
     const baseComponentClass = Il2Cpp.domain.assembly("UnityEngine.CoreModule").image.class("UnityEngine.Component");

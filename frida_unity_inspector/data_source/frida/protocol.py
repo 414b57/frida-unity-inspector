@@ -70,7 +70,7 @@ _GET_HIERARCHY_STRUCTURE_RETURN: TypeAdapter[Any] = TypeAdapter(list[HierarchyNo
 _GET_COMPONENT_PROPERTIES_RETURN: TypeAdapter[Any] = TypeAdapter(dict[str, list[Property] | None])
 _SET_GAMEOBJECT_ACTIVE_RETURN: TypeAdapter[Any] = TypeAdapter(bool)
 _SET_COMPONENT_ENABLED_RETURN: TypeAdapter[Any] = TypeAdapter(bool)
-_SET_PROPERTY_VALUE_RETURN: TypeAdapter[Any] = TypeAdapter(Property)
+_SET_PROPERTY_VALUE_RETURN: TypeAdapter[Any] = TypeAdapter(Property | None)
 
 
 # TypeAdapters for serializing RPC arguments (frida json.dumps can't handle pydantic models)
@@ -160,6 +160,6 @@ class AgentRpc:
         result = await self._call(Capabilities.SET_COMPONENT_ENABLED, _SET_COMPONENT_ENABLED_ARG_COMPONENT_HANDLE_PTR.dump_python(component_handle_ptr, mode="json"), _SET_COMPONENT_ENABLED_ARG_ACTIVE.dump_python(active, mode="json"))
         return _SET_COMPONENT_ENABLED_RETURN.validate_python(result)
 
-    async def set_property_value(self, component_handle_ptr: str, property: Property) -> Property:
+    async def set_property_value(self, component_handle_ptr: str, property: Property) -> Property | None:
         result = await self._call(Capabilities.SET_PROPERTY_VALUE, _SET_PROPERTY_VALUE_ARG_COMPONENT_HANDLE_PTR.dump_python(component_handle_ptr, mode="json"), _SET_PROPERTY_VALUE_ARG_PROPERTY.dump_python(property, mode="json"))
         return _SET_PROPERTY_VALUE_RETURN.validate_python(result)

@@ -520,11 +520,11 @@ function resolveWriter(type: Il2Cpp.Type, baseComponentClass: Il2Cpp.Class): ((p
 }
 // TODO - Merge resolve writer and parser. as seems to work same? idk. Look into future.
 
-const CUSTOM_COMPONENT_WRITERS: Record<string, (component: Il2Cpp.Object, property: Property) => Property | undefined> = {
+const CUSTOM_COMPONENT_WRITERS: Record<string, (component: Il2Cpp.Object, property: Property) => Property | null> = {
     // TODO - idk if needed. But match for now.
 }
 
-export function writeComponentProperty(componentHandleId: string, property: Property): Property | undefined {
+export function writeComponentProperty(componentHandleId: string, property: Property): Property | null {
     const component = getKnownComponent(componentHandleId)
     if (component === null) {
         console.warn(`writeComponentProperty: Unknown component id ${componentHandleId}`)
@@ -546,9 +546,9 @@ export function writeComponentProperty(componentHandleId: string, property: Prop
 
 
     // Determine write type - also cache field/setter for later use when getting type. So dont have to re-resolve.
-    let field: Il2Cpp.Field | null = null
-    let getter: Il2Cpp.Method | null = null
-    let setter: Il2Cpp.Method | null = null
+    let field: Il2Cpp.BoundField | Il2Cpp.Field | null | undefined = null
+    let getter: Il2Cpp.BoundMethod | Il2Cpp.Method | null | undefined = null
+    let setter: Il2Cpp.BoundMethod | Il2Cpp.Method | null | undefined = null
     let getType: Il2Cpp.Type | null = null
     let writeType: Il2Cpp.Type | null = null
     // Field handle
@@ -570,7 +570,7 @@ export function writeComponentProperty(componentHandleId: string, property: Prop
         getType = field.type
     }
     // Accessor handle
-    else if (property.source === "accessor" && property.is_static && property.setter) {
+    else if (property.source === "accessor" && property.is_static && property.setter && property.getter) {
         setter = component.class.tryMethod(property.setter, 1)
         if (!setter) {
             console.warn(`writeComponentProperty: Unknown static setter ${property.setter} on component ${component.class.name}`)
@@ -584,7 +584,7 @@ export function writeComponentProperty(componentHandleId: string, property: Prop
             return null
         }
         getType = getter.returnType
-    } else if (property.source === "accessor" && !property.is_static && property.setter) {
+    } else if (property.source === "accessor" && !property.is_static && property.setter && property.getter) {
         setter = component.tryMethod(property.setter, 1)
         if (!setter) {
             console.warn(`writeComponentProperty: Unknown setter ${property.setter} on component ${component.class.name}`)
@@ -599,7 +599,7 @@ export function writeComponentProperty(componentHandleId: string, property: Prop
         }
         getType = getter.returnType
     } else {
-        console.warn(`writeComponentProperty: Unknown property source ${property.source} or missing member/setter on component ${component.class.name}`)
+        console.warn(`writeComponentProperty: Unknown property source ${property.source} or missing member/setter/getter on component ${component.class.name}`)
         return null
     }
 

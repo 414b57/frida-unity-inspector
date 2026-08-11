@@ -59,7 +59,7 @@ export interface CapabilitySignatures {
     "getComponentProperties": (component_ids: string[]) => Record<string, Property[] | null> | Promise<Record<string, Property[] | null>>
     "setGameObjectActive": (gameobject_handle_ptr: string, active: boolean) => boolean | Promise<boolean>
     "setComponentEnabled": (component_handle_ptr: string, active: boolean) => boolean | Promise<boolean>
-    "setPropertyValue": (component_handle_ptr: string, property: Property) => Property | Promise<Property>
+    "setPropertyValue": (component_handle_ptr: string, property: Property) => Property | null | Promise<Property | null>
 }
 
 export interface BuiltinSignatures {
