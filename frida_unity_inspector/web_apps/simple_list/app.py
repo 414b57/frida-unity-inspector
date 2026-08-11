@@ -88,16 +88,40 @@ class SimpleListWebApp(BaseWebApp):
     # -- REST API ---
     # - Read -
     async def status(self) -> dict:
-        return (await self.datasource.status()).model_dump()
+        try:
+            status = await self.datasource.status()
+            if status is None:
+                raise HTTPException(status_code=503, detail="Data source is not available.")
+            return status.model_dump()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
     async def game_context(self) -> dict:
-        return (await self.datasource.get_game_context()).model_dump()
+        try:
+            game_context = await self.datasource.get_game_context()
+            if game_context is None:
+                raise HTTPException(status_code=503, detail="Game context is not available.")
+            return game_context.model_dump()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
     async def scenes(self) -> list[dict]:
-        return [scene.model_dump() for scene in await self.datasource.get_scenes()]
+        try:
+            scenes = await self.datasource.get_scenes()
+            if scenes is None:
+                raise HTTPException(status_code=503, detail="Scenes are not available.")
+            return [scene.model_dump() for scene in scenes]
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
     async def current_scene(self) -> dict:
-        return (await self.datasource.get_current_scene()).model_dump()
+        try:
+            current_scene = await self.datasource.get_current_scene()
+            if current_scene is None:
+                raise HTTPException(status_code=503, detail="Current scene is not available.")
+            return current_scene.model_dump()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
     # - Write -
     async def set_active(self, request: SetActiveRequest) -> dict:
