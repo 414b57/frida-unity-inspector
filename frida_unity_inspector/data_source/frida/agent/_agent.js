@@ -4205,8 +4205,13 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     detect: () => method("UnityEngine.CoreModule", "UnityEngine.GameObject", "SetActive", 1) !== null,
     implementation: (gameobject_handle_ptr, active) => Il2Cpp.perform(() => {
       const go = new Il2Cpp.Object(ptr(gameobject_handle_ptr));
+      if (go === null) {
+        console.error(`Failed to find GameObject with handle ${gameobject_handle_ptr}`);
+        return false;
+      }
       const method2 = go.tryMethod("SetActive", 1);
       if (method2 === null) {
+        console.error(`Failed to find SetActive method on GameObject with handle ${gameobject_handle_ptr}`);
         return false;
       }
       method2?.invoke(active);
@@ -4219,9 +4224,14 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     name: Capabilities.SET_COMPONENT_ENABLED,
     detect: () => method("UnityEngine.CoreModule", "UnityEngine.Behaviour", "set_enabled", 1) !== null,
     implementation: (component_handle_ptr, active) => Il2Cpp.perform(() => {
-      const comp = new Il2Cpp.Object(ptr(component_handle_ptr));
+      const comp = getKnownComponent(component_handle_ptr);
+      if (comp === null) {
+        console.error(`Failed to find Component with handle ${component_handle_ptr}`);
+        return false;
+      }
       const method2 = comp.tryMethod("set_enabled", 1);
       if (method2 === null) {
+        console.error(`Failed to find set_enabled method on Component with handle ${component_handle_ptr}`);
         return false;
       }
       method2?.invoke(active);

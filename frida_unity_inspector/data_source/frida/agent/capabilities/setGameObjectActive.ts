@@ -12,8 +12,13 @@ defineCapability({
     implementation: (gameobject_handle_ptr: string, active: boolean) =>
         Il2Cpp.perform(() => {
             const go = new Il2Cpp.Object(ptr(gameobject_handle_ptr));
+            if (go === null) {
+                console.warn(`Failed to find GameObject with handle ${gameobject_handle_ptr}`);
+                return false
+            }
             const method = go.tryMethod<void>("SetActive", 1);
             if (method === null) {
+                console.warn(`Failed to find SetActive method on GameObject with handle ${gameobject_handle_ptr}`);
                 return false
             }
             method?.invoke(active);
