@@ -32,6 +32,7 @@ class Capabilities(StrEnum):
     GET_COMPONENT_PROPERTIES = "getComponentProperties"
     SET_GAMEOBJECT_ACTIVE = "setGameObjectActive"
     SET_COMPONENT_ENABLED = "setComponentEnabled"
+    SET_PROPERTY_VALUE = "setPropertyValue"
 
 
 # Capabilities each capability depends on
@@ -43,6 +44,7 @@ CAPABILITY_REQUIRES: dict[Capabilities, tuple[Capabilities, ...]] = {
     Capabilities.GET_COMPONENT_PROPERTIES: (Capabilities.GET_HIERARCHY_STRUCTURE,),
     Capabilities.SET_GAMEOBJECT_ACTIVE: (),
     Capabilities.SET_COMPONENT_ENABLED: (),
+    Capabilities.SET_PROPERTY_VALUE: (),
 }
 
 
@@ -68,6 +70,18 @@ _GET_HIERARCHY_STRUCTURE_RETURN: TypeAdapter[Any] = TypeAdapter(list[HierarchyNo
 _GET_COMPONENT_PROPERTIES_RETURN: TypeAdapter[Any] = TypeAdapter(dict[str, list[Property] | None])
 _SET_GAMEOBJECT_ACTIVE_RETURN: TypeAdapter[Any] = TypeAdapter(bool)
 _SET_COMPONENT_ENABLED_RETURN: TypeAdapter[Any] = TypeAdapter(bool)
+_SET_PROPERTY_VALUE_RETURN: TypeAdapter[Any] = TypeAdapter(Property)
+
+
+# TypeAdapters for serializing RPC arguments (frida json.dumps can't handle pydantic models)
+_PING_ARG_UNIX_EPOCH_SECONDS: TypeAdapter[Any] = TypeAdapter(float)
+_GET_COMPONENT_PROPERTIES_ARG_COMPONENT_IDS: TypeAdapter[Any] = TypeAdapter(list[str])
+_SET_GAMEOBJECT_ACTIVE_ARG_GAMEOBJECT_HANDLE_PTR: TypeAdapter[Any] = TypeAdapter(str)
+_SET_GAMEOBJECT_ACTIVE_ARG_ACTIVE: TypeAdapter[Any] = TypeAdapter(bool)
+_SET_COMPONENT_ENABLED_ARG_COMPONENT_HANDLE_PTR: TypeAdapter[Any] = TypeAdapter(str)
+_SET_COMPONENT_ENABLED_ARG_ACTIVE: TypeAdapter[Any] = TypeAdapter(bool)
+_SET_PROPERTY_VALUE_ARG_COMPONENT_HANDLE_PTR: TypeAdapter[Any] = TypeAdapter(str)
+_SET_PROPERTY_VALUE_ARG_PROPERTY: TypeAdapter[Any] = TypeAdapter(Property)
 
 
 RpcCall: TypeAlias = Callable[..., Awaitable[Any]]
@@ -93,6 +107,7 @@ class AgentRpc:
                 Capabilities.GET_COMPONENT_PROPERTIES: self.get_component_properties,
                 Capabilities.SET_GAMEOBJECT_ACTIVE: self.set_gameobject_active,
                 Capabilities.SET_COMPONENT_ENABLED: self.set_component_enabled,
+                Capabilities.SET_PROPERTY_VALUE: self.set_property_value,
             }
 
     def dispatch(self, key: StrEnum, *args, **kwargs) -> Awaitable[Any]:
@@ -114,7 +129,7 @@ class AgentRpc:
         return _UNITY_VERSION_RETURN.validate_python(result)
 
     async def ping(self, unix_epoch_seconds: float) -> tuple[float, float]:
-        result = await self._call(Builtins.PING, unix_epoch_seconds)
+        result = await self._call(Builtins.PING, _PING_ARG_UNIX_EPOCH_SECONDS.dump_python(unix_epoch_seconds, mode="json"))
         return _PING_RETURN.validate_python(result)
 
     async def get_current_render_pipeline(self) -> str | None:
@@ -134,13 +149,17 @@ class AgentRpc:
         return _GET_HIERARCHY_STRUCTURE_RETURN.validate_python(result)
 
     async def get_component_properties(self, component_ids: list[str]) -> dict[str, list[Property] | None]:
-        result = await self._call(Capabilities.GET_COMPONENT_PROPERTIES, component_ids)
+        result = await self._call(Capabilities.GET_COMPONENT_PROPERTIES, _GET_COMPONENT_PROPERTIES_ARG_COMPONENT_IDS.dump_python(component_ids, mode="json"))
         return _GET_COMPONENT_PROPERTIES_RETURN.validate_python(result)
 
     async def set_gameobject_active(self, gameobject_handle_ptr: str, active: bool) -> bool:
-        result = await self._call(Capabilities.SET_GAMEOBJECT_ACTIVE, gameobject_handle_ptr, active)
+        result = await self._call(Capabilities.SET_GAMEOBJECT_ACTIVE, _SET_GAMEOBJECT_ACTIVE_ARG_GAMEOBJECT_HANDLE_PTR.dump_python(gameobject_handle_ptr, mode="json"), _SET_GAMEOBJECT_ACTIVE_ARG_ACTIVE.dump_python(active, mode="json"))
         return _SET_GAMEOBJECT_ACTIVE_RETURN.validate_python(result)
 
     async def set_component_enabled(self, component_handle_ptr: str, active: bool) -> bool:
-        result = await self._call(Capabilities.SET_COMPONENT_ENABLED, component_handle_ptr, active)
+        result = await self._call(Capabilities.SET_COMPONENT_ENABLED, _SET_COMPONENT_ENABLED_ARG_COMPONENT_HANDLE_PTR.dump_python(component_handle_ptr, mode="json"), _SET_COMPONENT_ENABLED_ARG_ACTIVE.dump_python(active, mode="json"))
         return _SET_COMPONENT_ENABLED_RETURN.validate_python(result)
+
+    async def set_property_value(self, component_handle_ptr: str, property: Property) -> Property:
+        result = await self._call(Capabilities.SET_PROPERTY_VALUE, _SET_PROPERTY_VALUE_ARG_COMPONENT_HANDLE_PTR.dump_python(component_handle_ptr, mode="json"), _SET_PROPERTY_VALUE_ARG_PROPERTY.dump_python(property, mode="json"))
+        return _SET_PROPERTY_VALUE_RETURN.validate_python(result)

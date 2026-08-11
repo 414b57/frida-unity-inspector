@@ -131,5 +131,11 @@ CAPABILITIES: list[Call] = [
         "setComponentEnabled",
         bool,
         args=(Arg("component_handle_ptr", str), Arg("active", bool))
+    ),
+    Call(
+        "SET_PROPERTY_VALUE",
+        "setPropertyValue",
+        Property,
+        args=(Arg("component_handle_ptr", str), Arg("property", Property))
     )
 ]

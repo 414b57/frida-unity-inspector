@@ -3365,7 +3365,8 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     GET_HIERARCHY_STRUCTURE: "getHierarchyStructure",
     GET_COMPONENT_PROPERTIES: "getComponentProperties",
     SET_GAMEOBJECT_ACTIVE: "setGameObjectActive",
-    SET_COMPONENT_ENABLED: "setComponentEnabled"
+    SET_COMPONENT_ENABLED: "setComponentEnabled",
+    SET_PROPERTY_VALUE: "setPropertyValue"
   };
   var CapabilityRequires = {
     "getCurrentRenderPipeline": [],
@@ -3374,7 +3375,8 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     "getHierarchyStructure": ["getCurrentScene"],
     "getComponentProperties": ["getHierarchyStructure"],
     "setGameObjectActive": [],
-    "setComponentEnabled": []
+    "setComponentEnabled": [],
+    "setPropertyValue": []
   };
   function sendEvent(event, data) {
     send({ type: MessageTypes.EVENT, event, data });
@@ -3895,6 +3897,136 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     }
     return properties;
   }
+  var VALUE_WRITERS = {
+    /// Basic / primitive types.
+    // TODO
+    /// Vector / Math Types
+    "UnityEngine.Vector3": (property) => {
+      const casted = property;
+      const Vector3Class = klass("UnityEngine.CoreModule", "UnityEngine.Vector3");
+      if (!Vector3Class) throw new Error("Vector3 class not found");
+      const v = Vector3Class.alloc();
+      v.method(".ctor", 3).invoke(casted.value.x, casted.value.y, casted.value.z);
+      return v.unbox();
+    }
+    // TODO - Rest
+    /// Colour types
+    // TODO
+    /// Array / Collection types
+    // TODO
+    /// Object / Reference types
+    // TODO
+  };
+  function resolveWriter(type, baseComponentClass) {
+    const direct = VALUE_WRITERS[type.name];
+    if (direct) return direct;
+    if (type.class.isEnum) return VALUE_WRITERS["System.Enum"];
+    if (type.class.isSubclassOf(baseComponentClass, true)) return VALUE_WRITERS["UnityEngine.Component"];
+    return void 0;
+  }
+  var CUSTOM_COMPONENT_WRITERS = {
+    // TODO - idk if needed. But match for now.
+  };
+  function writeComponentProperty(componentHandleId, property) {
+    const component = getKnownComponent(componentHandleId);
+    if (component === null) {
+      console.warn(`writeComponentProperty: Unknown component id ${componentHandleId}`);
+      return null;
+    }
+    const componentClass = component.class;
+    const componentType = `${componentClass.namespace ? componentClass.namespace + "." : ""}${componentClass.name}`;
+    const customWriter = CUSTOM_COMPONENT_WRITERS[componentType];
+    if (customWriter) {
+      try {
+        return customWriter(component, property);
+      } catch (e) {
+        console.warn(`Custom property writer for component ${component.class.name} (${componentType}) failed: ${e}`);
+        return null;
+      }
+    }
+    let field = null;
+    let getter2 = null;
+    let setter = null;
+    let getType = null;
+    let writeType = null;
+    if (property.source === "field" && property.is_static && property.member) {
+      field = component.class.tryField(property.member);
+      if (!field) {
+        console.warn(`writeComponentProperty: Unknown field ${property.member} on component ${component.class.name}`);
+        return null;
+      }
+      writeType = field.type;
+      getType = field.type;
+    } else if (property.source === "field" && !property.is_static && property.member) {
+      field = component.tryField(property.member);
+      if (!field) {
+        console.warn(`writeComponentProperty: Unknown field ${property.member} on component ${component.class.name}`);
+        return null;
+      }
+      writeType = field.type;
+      getType = field.type;
+    } else if (property.source === "accessor" && property.is_static && property.setter) {
+      setter = component.class.tryMethod(property.setter, 1);
+      if (!setter) {
+        console.warn(`writeComponentProperty: Unknown static setter ${property.setter} on component ${component.class.name}`);
+        return null;
+      }
+      writeType = setter.parameters[0].type;
+      getter2 = component.class.tryMethod(property.getter, 0);
+      if (!getter2) {
+        console.warn(`writeComponentProperty: Unknown static getter ${property.getter} on component ${component.class.name}`);
+        return null;
+      }
+      getType = getter2.returnType;
+    } else if (property.source === "accessor" && !property.is_static && property.setter) {
+      setter = component.tryMethod(property.setter, 1);
+      if (!setter) {
+        console.warn(`writeComponentProperty: Unknown setter ${property.setter} on component ${component.class.name}`);
+        return null;
+      }
+      writeType = setter.parameters[0].type;
+      getter2 = component.tryMethod(property.getter, 0);
+      if (!getter2) {
+        console.warn(`writeComponentProperty: Unknown getter ${property.getter} on component ${component.class.name}`);
+        return null;
+      }
+      getType = getter2.returnType;
+    } else {
+      console.warn(`writeComponentProperty: Unknown property source ${property.source} or missing member/setter on component ${component.class.name}`);
+      return null;
+    }
+    const baseComponentClass = Il2Cpp.domain.assembly("UnityEngine.CoreModule").image.class("UnityEngine.Component");
+    const writer = resolveWriter(writeType, baseComponentClass);
+    const parser = resolveParser(getType, baseComponentClass);
+    if (!writer) {
+      console.warn(`writeComponentProperty: No writer for type ${writeType.name} on component ${component.class.name}`);
+      return null;
+    }
+    if (!parser) {
+      console.warn(`writeComponentProperty: No parser for type ${writeType.name} on component ${component.class.name}`);
+      return null;
+    }
+    if (field) {
+      try {
+        field.value = writer(property);
+        return parser(field.value, property);
+      } catch (e) {
+        console.warn(`writeComponentProperty: Failed to write field ${field.name} on component ${component.class.name}: ${e}`);
+        return null;
+      }
+    } else if (setter) {
+      try {
+        setter.invoke(writer(property));
+        return parser(getter2.invoke(), property);
+      } catch (e) {
+        console.warn(`writeComponentProperty: Failed to invoke setter ${setter.name} on component ${component.class.name}: ${e}`);
+        return null;
+      }
+    } else {
+      console.warn(`writeComponentProperty: No field or setter found for property ${property.label} on component ${component.class.name}`);
+      return null;
+    }
+  }
 
   // capabilities/getHierarchyStructure.ts
   function parseComponentsOfGameObject(gameObject, name, seenComponentIds) {
@@ -4056,6 +4188,15 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       }
       method2?.invoke(active);
       return true;
+    })
+  });
+
+  // capabilities/setPropertyValue.ts
+  defineCapability({
+    name: Capabilities.SET_PROPERTY_VALUE,
+    detect: () => klass("UnityEngine.CoreModule", "UnityEngine.GameObject") !== null,
+    implementation: (component_handle_ptr, property) => Il2Cpp.perform(() => {
+      return writeComponentProperty(component_handle_ptr, property);
     })
   });
 

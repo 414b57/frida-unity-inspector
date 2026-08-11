@@ -275,5 +275,11 @@ class FridaDataSource(BaseDataSource):
             raise RuntimeError(f"Failed to set enabled state of component {component_id} on object {object_id} to {enabled}")
         self.logger.debug(f"Successfully set enabled state of component {component_id} on object {object_id} to {enabled}")
 
-    async def set_property(self, object_id: str, component_id: str, label: str, value: Any) -> Property:
+    async def set_property(self, object_id: str, component_id: str, property: Property) -> Property:
         """TODO"""
+        self.logger.debug(f"Setting property {property.label} of component {component_id} on object {object_id} to {property.value}")
+        result = await self.session.call_capability(Capabilities.SET_PROPERTY_VALUE, component_id, property)
+        if result is None:
+            raise RuntimeError(f"Failed to set property {property.label} of component {component_id} on object {object_id} to {property.value}")
+        self.logger.debug(f"Successfully set property {property.label} of component {component_id} on object {object_id} to {property.value} (result: {result.value})")
+        return result

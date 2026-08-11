@@ -1,6 +1,7 @@
 import "frida-il2cpp-bridge"
 
-import type {BaseProperty, Property} from "./models"
+import type {BaseProperty, Property, Vector3Property} from "./models"
+import {klass} from "./resolve";
 
 // A miniature component registry to avoid dereferencing freed memory.
 // getHierarchyStructure registers every component it walks past here, keyed by handle which are stable across the lifetime of the component.
@@ -23,7 +24,7 @@ export function pruneComponents(liveIds: Set<string>): void {
     }
 }
 
-// Value parsing / type wrangling helpers. These are used to convert raw Il2Cpp values into a more structured format for the inspector.
+// Value parsing / type wrangling helpers.
 function toNumber(raw: unknown): number | null {
     if (typeof raw === "number") return Number.isFinite(raw) ? raw : null
     if (typeof raw === "bigint") return Number(raw)
@@ -37,6 +38,8 @@ function toNumber(raw: unknown): number | null {
     }
 }
 
+/// Parsers
+// Used to convert raw Il2Cpp values into a more structured format for the inspector. Each parser is keyed by the type name of the value it can parse.
 const VALUE_PARSERS: Record<string, (raw: unknown, base: BaseProperty) => Property> = {
     /// Basic / primitive types.
     // int
@@ -477,4 +480,159 @@ export function parseComponentProperties(component: Il2Cpp.Object): Property[] {
     }
 
     return properties
+}
+
+/// Writers
+// Used to convert structured Property values back into raw Il2Cpp values for writing back to the game. Each writer is keyed by the type name of the value it can write.
+const VALUE_WRITERS: Record<string, (property: Property) => any> = {
+    /// Basic / primitive types.
+    // TODO
+
+    /// Vector / Math Types
+    "UnityEngine.Vector3": (property) => {
+        const casted = property as Vector3Property;
+        const Vector3Class = klass("UnityEngine.CoreModule", "UnityEngine.Vector3")
+        if (!Vector3Class) throw new Error("Vector3 class not found")
+        const v = Vector3Class.alloc()
+        v.method(".ctor", 3).invoke(casted.value.x, casted.value.y, casted.value.z)
+        return v.unbox()
+    }
+    // TODO - Rest
+
+    /// Colour types
+    // TODO
+
+    /// Array / Collection types
+    // TODO
+
+    /// Object / Reference types
+    // TODO
+}
+
+function resolveWriter(type: Il2Cpp.Type, baseComponentClass: Il2Cpp.Class): ((property: Property) => any) | undefined {
+    const direct = VALUE_WRITERS[type.name]
+    if (direct) return direct
+    // field.type.name returns the name of enum (DataTestScript.ExampleEnum), which wont match via direct `System.Enum` lookup. So we need to check if the type is an enum and return the enum writer if so.
+    if (type.class.isEnum) return VALUE_WRITERS["System.Enum"]
+    // Check if obj is a componenet, if so call the component writer. This is a bit of a hack, but it works for now. TODO - Improve this to be more robust.
+    if (type.class.isSubclassOf(baseComponentClass, true)) return VALUE_WRITERS["UnityEngine.Component"]
+    return undefined
+}
+// TODO - Merge resolve writer and parser. as seems to work same? idk. Look into future.
+
+const CUSTOM_COMPONENT_WRITERS: Record<string, (component: Il2Cpp.Object, property: Property) => Property | undefined> = {
+    // TODO - idk if needed. But match for now.
+}
+
+export function writeComponentProperty(componentHandleId: string, property: Property): Property | undefined {
+    const component = getKnownComponent(componentHandleId)
+    if (component === null) {
+        console.warn(`writeComponentProperty: Unknown component id ${componentHandleId}`)
+        return null
+    }
+    const componentClass = component.class
+
+    // NOTE: Myb rename - as not custom comp anymore. just synthetic handlers.
+    const componentType = `${componentClass.namespace ? componentClass.namespace + "." : ""}${componentClass.name}`
+    const customWriter = CUSTOM_COMPONENT_WRITERS[componentType]
+    if (customWriter) {
+        try {
+            return customWriter(component, property)
+        } catch (e) {
+            console.warn(`Custom property writer for component ${component.class.name} (${componentType}) failed: ${e}`)
+            return null
+        }
+    }
+
+
+    // Determine write type - also cache field/setter for later use when getting type. So dont have to re-resolve.
+    let field: Il2Cpp.Field | null = null
+    let getter: Il2Cpp.Method | null = null
+    let setter: Il2Cpp.Method | null = null
+    let getType: Il2Cpp.Type | null = null
+    let writeType: Il2Cpp.Type | null = null
+    // Field handle
+    if (property.source === "field" && property.is_static && property.member) {
+        field = component.class.tryField(property.member)
+        if (!field) {
+            console.warn(`writeComponentProperty: Unknown field ${property.member} on component ${component.class.name}`)
+            return null
+        }
+        writeType = field.type
+        getType = field.type
+    } else if (property.source === "field" && !property.is_static && property.member) {
+        field = component.tryField(property.member)
+        if (!field) {
+            console.warn(`writeComponentProperty: Unknown field ${property.member} on component ${component.class.name}`)
+            return null
+        }
+        writeType = field.type
+        getType = field.type
+    }
+    // Accessor handle
+    else if (property.source === "accessor" && property.is_static && property.setter) {
+        setter = component.class.tryMethod(property.setter, 1)
+        if (!setter) {
+            console.warn(`writeComponentProperty: Unknown static setter ${property.setter} on component ${component.class.name}`)
+            return null
+        }
+        writeType = setter.parameters[0].type
+
+        getter = component.class.tryMethod(property.getter, 0)
+        if (!getter) {
+            console.warn(`writeComponentProperty: Unknown static getter ${property.getter} on component ${component.class.name}`)
+            return null
+        }
+        getType = getter.returnType
+    } else if (property.source === "accessor" && !property.is_static && property.setter) {
+        setter = component.tryMethod(property.setter, 1)
+        if (!setter) {
+            console.warn(`writeComponentProperty: Unknown setter ${property.setter} on component ${component.class.name}`)
+            return null
+        }
+        writeType = setter.parameters[0].type
+
+        getter = component.tryMethod(property.getter, 0)
+        if (!getter) {
+            console.warn(`writeComponentProperty: Unknown getter ${property.getter} on component ${component.class.name}`)
+            return null
+        }
+        getType = getter.returnType
+    } else {
+        console.warn(`writeComponentProperty: Unknown property source ${property.source} or missing member/setter on component ${component.class.name}`)
+        return null
+    }
+
+    const baseComponentClass = Il2Cpp.domain.assembly("UnityEngine.CoreModule").image.class("UnityEngine.Component")
+    const writer = resolveWriter(writeType, baseComponentClass)
+    const parser = resolveParser(getType, baseComponentClass)
+    if (!writer) {
+        console.warn(`writeComponentProperty: No writer for type ${writeType.name} on component ${component.class.name}`)
+        return null
+    }
+    if (!parser) {
+        console.warn(`writeComponentProperty: No parser for type ${writeType.name} on component ${component.class.name}`)
+        return null
+    }
+
+    if (field) {
+        try {
+            field.value = writer(property)
+            return parser(field.value, property)
+        } catch (e) {
+            console.warn(`writeComponentProperty: Failed to write field ${field.name} on component ${component.class.name}: ${e}`)
+            return null
+        }
+    } else if (setter) {
+        try {
+            setter.invoke(writer(property))
+            return parser(getter!.invoke(), property)
+        } catch (e) {
+            console.warn(`writeComponentProperty: Failed to invoke setter ${setter.name} on component ${component.class.name}: ${e}`)
+            return null
+        }
+    } else {
+        console.warn(`writeComponentProperty: No field or setter found for property ${property.label} on component ${component.class.name}`)
+        return null
+    }
 }
