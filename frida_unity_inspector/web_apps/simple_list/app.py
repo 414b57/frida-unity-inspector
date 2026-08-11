@@ -123,5 +123,9 @@ class SimpleListWebApp(BaseWebApp):
             raise HTTPException(status_code=404, detail=str(e))
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
+
+        if updated == None:
+            raise HTTPException(status_code=400, detail="Property not found or not writable.")
+
         return {"ok": True, "property": updated.model_dump()}
 
