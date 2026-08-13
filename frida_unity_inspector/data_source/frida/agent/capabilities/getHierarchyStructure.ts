@@ -145,5 +145,5 @@ defineCapability({
             }
             pruneComponents(seenComponentIds)
             return structure
-        }, "main"),
+        }),
 })

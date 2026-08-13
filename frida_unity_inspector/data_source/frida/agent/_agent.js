@@ -3445,7 +3445,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
         const pipeline = getter2.invoke();
         if (pipeline.isNull()) return null;
         return pipeline.class.name;
-      }, "main");
+      });
     }
   });
 
@@ -3456,7 +3456,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
   defineCapability({
     name: Capabilities.GET_SCENE_MANAGER,
     detect: () => sceneManagerClass() !== null,
-    implementation: () => Il2Cpp.perform(() => sceneManagerClass(), "main")
+    implementation: () => Il2Cpp.perform(() => sceneManagerClass())
   });
 
   // capabilities/getCurrentScene.ts
@@ -3469,7 +3469,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       const getActiveScene = sceneManager.tryMethod("GetActiveScene");
       if (getActiveScene === null) return null;
       return getActiveScene.invoke();
-    }, "main")
+    })
   });
 
   // helpers/properties.ts
@@ -4171,7 +4171,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       }
       pruneComponents(seenComponentIds);
       return structure;
-    }, "main")
+    })
   });
 
   // capabilities/getComponentProperties.ts
@@ -4196,7 +4196,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
         }
       }
       return result;
-    }, "main")
+    })
   });
 
   // capabilities/setGameObjectActive.ts
@@ -4216,7 +4216,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       }
       method2?.invoke(active);
       return true;
-    }, "main")
+    })
   });
 
   // capabilities/setComponentEnabled.ts
@@ -4236,7 +4236,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       }
       method2?.invoke(active);
       return true;
-    }, "main")
+    })
   });
 
   // capabilities/setPropertyValue.ts
@@ -4245,7 +4245,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     detect: () => klass("UnityEngine.CoreModule", "UnityEngine.GameObject") !== null,
     implementation: (component_handle_ptr, property) => Il2Cpp.perform(() => {
       return writeComponentProperty(component_handle_ptr, property);
-    }, "main")
+    })
   });
 
   // index.ts
@@ -4280,7 +4280,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       console.log("[+] RPC exports:", Object.keys(exports));
       console.log("[+] Capabilities detected:", JSON.stringify(capabilitySnapshot));
       sendEvent(Events.AGENT_READY, capabilitySnapshot);
-    }, "main");
+    });
   }
   setTimeout(bootstrap, 3e3);
   sendEvent(Events.AGENT_LOADED, null);

@@ -18,5 +18,5 @@ defineCapability({
             if (getActiveScene === null) return null
 
             return getActiveScene.invoke()
-        }, "main"),
+        }),
 })

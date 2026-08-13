@@ -37,5 +37,5 @@ defineCapability({
                 }
             }
             return result
-        }, "main"),
+        }),
 })

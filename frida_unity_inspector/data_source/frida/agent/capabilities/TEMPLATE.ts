@@ -47,5 +47,5 @@
 //         Il2Cpp.perform(() => {
 //             // Put code here that will be executed when the capability is called.
 //             return "Return Value"
-//         }, "main"),
+//         }),
 // })
