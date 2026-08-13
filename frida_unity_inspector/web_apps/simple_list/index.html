@@ -573,15 +573,21 @@
             return entry;
         }
 
+        // Fix to prevent page from scrolling up when new structure given.
+        function place(container, node, index) {
+            if (container.children[index] === node) return;
+            container.insertBefore(node, container.children[index] ?? null);
+        }
+
         // Walks the incomming tree, reuses existing elements and creates missing ones.
         // Property values only changed when their information is set/included, otherwise not changed/empty.
-        function reconcileNode(node, container, seenNodes, seenComponents, includeProperties) {
+        function reconcileNode(node, container, index, seenNodes, seenComponents, includeProperties) {
             seenNodes.add(node.id);
             let entry = nodeEls.get(node.id);
             if (!entry) entry = createNode(node);
             updateNodeHeader(entry, node);
 
-            for (const component of node.data.components) {
+            node.data.components.forEach((component, i) => {
                 seenComponents.add(component.id);
                 let compEntry = componentEls.get(component.id);
                 if (!compEntry) {
@@ -590,14 +596,14 @@
                     updateComponentHeader(compEntry, node.id, component);
                     if (includeProperties) setComponentProperties(compEntry, component.properties ?? []);
                 }
-                entry.componentsWrap.appendChild(compEntry.details);
-            }
+                place(entry.componentsWrap, compEntry.details, i);
+            });
 
-            for (const child of node.children) {
-                reconcileNode(child, entry.childrenWrap, seenNodes, seenComponents, includeProperties);
-            }
+            node.children.forEach((child, i) => {
+                reconcileNode(child, entry.childrenWrap, i, seenNodes, seenComponents, includeProperties);
+            });
 
-            container.appendChild(entry.details);
+            place(container, entry.details, index);
         }
 
         let sceneHeaderName = null;
@@ -625,9 +631,9 @@
 
             const seenNodes = new Set();
             const seenComponents = new Set();
-            for (const root of scene.roots) {
-                reconcileNode(root, sceneRootsWrap, seenNodes, seenComponents, includeProperties);
-            }
+            scene.roots.forEach((root, i) => {
+                reconcileNode(root, sceneRootsWrap, i, seenNodes, seenComponents, includeProperties);
+            });
 
             // Drop elements for anything that no longer exists.
             for (const [id, entry] of nodeEls) {

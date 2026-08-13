@@ -28,7 +28,7 @@ TICK_INTERVAL_SECONDS = 0.25
 # Whether should account for time spent in tick when sleeping between ticks. If True, then the sleep time is reduced by the time spent in tick, so that the total time between ticks is approximately TICK_INTERVAL_SECONDS. If False, then the sleep time is always TICK_INTERVAL_SECONDS, so that the total time between ticks is TICK_INTERVAL_SECONDS + time spent in tick.
 ACCOUNT_FOR_TICK_TIME = True
 # How many properties to poll per tick. Polling too many properties at once can hitch the game thread, so we do it in chunks.
-PROPS_PER_TICK = 10
+PROPS_PER_TICK = 3
 
 _STRUCTURE_ADAPTER: TypeAdapter[list[HierarchyNode]] = TypeAdapter(list[HierarchyNode])
 _PROPS_ADAPTER: TypeAdapter[list[Property]] = TypeAdapter(list[Property])
@@ -69,6 +69,8 @@ class FridaDataSource(BaseDataSource):
         self._component_prop_dumps: dict[str, bytes] = {}  # per-component serialized props, if match no changes has occured
         self._prop_cycle: list[str] = []  # all component ids in tree order
         self._prop_cursor = 0  # position within the in-scope components
+        self._polled_this_cycle = 0  # components polled since last full sweep
+        self._poll_percent = 0.0  # percent of in-scope components polled since last full sweep
 
     # -- lifecycle --
     async def start(self) -> None:
@@ -157,14 +159,16 @@ class FridaDataSource(BaseDataSource):
         round_trip_time = stop - start
 
         await self._poll_structure() # Qucik poll of the light hierarchy structure, if changed re-key the property and notify subscribers
+        structure_poll_time = time.time()
         await self._poll_property_chunk() # Then do heavy reflection work on the game thread to fetch property values for the next chunk of in-scope components and notify subscribers of changes
 
         finish = time.time()
         self.current_status = Status(
             running=self._running,
-            message=f"FridaDataSource is running - tick took {finish-start:.6f}s",
+            message=f"FridaDataSource running - {self._poll_percent:.0f}% polled - tick took {finish - start:.6f}s (structure: {structure_poll_time - start:.6f}s, properties: {finish - structure_poll_time:.6f}s)"
         )
-        self.logger.trace(f"Ping round-trip time: {round_trip_time:.6f}s, python-to-ts delay: {python_to_ts_delay:.6f}s, ts-to-python delay: {stop-ts_time:.6f}s, tick took {finish-start:.6f}s")
+        self.logger.trace(f"Ping round-trip time: {round_trip_time:.6f}s, python-to-ts delay: {python_to_ts_delay:.6f}s, ts-to-python delay: {stop-ts_time:.6f}s")
+        self.logger.debug(f"Total time: {finish-start:.6f}s, structure poll: {structure_poll_time-start:.6f}s, property poll: {finish-structure_poll_time:.6f}s")
         self._emit_update(StatusUpdate(status=self.current_status))
         self._last_tick_time = time.time()-start
 
@@ -213,8 +217,16 @@ class FridaDataSource(BaseDataSource):
             self._prop_cursor = 0
         chunk = [targets[(self._prop_cursor + i) % len(targets)] for i in range(min(PROPS_PER_TICK, len(targets)))]
         self._prop_cursor = (self._prop_cursor + len(chunk)) % len(targets)
+        self._poll_percent = 100.0 * self._prop_cursor / len(targets) if targets else 0.0
 
         result: dict[str, list[Property] | None] = await self.session.call_capability(Capabilities.GET_COMPONENT_PROPERTIES, component_ids=chunk)
+
+        self._polled_this_cycle += len(chunk)
+        if self._polled_this_cycle >= len(targets):
+            self._poll_percent = 100.0
+            self._polled_this_cycle = 0  # reset for next sweep
+        else:
+            self._poll_percent = 100.0 * self._polled_this_cycle / len(targets)
 
         changed: dict[str, list[Property]] = {}
         for component_id, props in result.items():
