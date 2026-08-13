@@ -264,7 +264,10 @@ class FridaInjector:
         self._loop = asyncio.get_running_loop()
 
         self._connect_output_signal()
-        self._pid = self._frida_device.spawn([package_name], stdio="pipe")
+        if self._local:
+            self._pid = self._frida_device.spawn([package_name], stdio="pipe")
+        else:
+            self._pid = self._frida_device.spawn([package_name], stdio="inherit")
         logger.debug("Spawned process '%s' with PID %s.", package_name, self._pid)
         self._session = self._frida_device.attach(self._pid)
         logger.debug("Attached to spawned process '%s' with PID %s.", package_name, self._pid)
