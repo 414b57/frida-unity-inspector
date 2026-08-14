@@ -1,7 +1,7 @@
 import "frida-il2cpp-bridge"
 
 import { defineCapability, getCapability } from "../helpers/capability"
-import type { Component, HierarchyNode, IconName } from "../helpers/models"
+import type { Component, HierarchyNode, IconName, Scene } from "../helpers/models"
 import { pruneComponents, rememberComponent } from "../helpers/properties"
 import { Capabilities } from "../helpers/protocol"
 import { klass, method } from "../helpers/resolve"
@@ -131,19 +131,36 @@ defineCapability({
 
     implementation: () =>
         Il2Cpp.perform(async () => {
-            const scene: Il2Cpp.ValueType = await getCapability(Capabilities.GET_CURRENT_SCENE)()
-            if (scene === null) return null
+            const scenes: Il2Cpp.ValueType[] = await getCapability(Capabilities.GET_LOADED_SCENES)()
+            if (scenes === null) return null
 
-            const getRootGameObjects = scene.tryMethod<Il2Cpp.Array<Il2Cpp.Object>>("GetRootGameObjects")
-            if (getRootGameObjects === undefined) return null
-
-            const rootGameObjects: Il2Cpp.Array<Il2Cpp.Object> = getRootGameObjects.invoke()
+            // Component ids are unique across scenes (they're native handles), so a single
+            // seen-set spanning all scenes correctly prunes stale cached components.
             const seenComponentIds = new Set<string>()
-            const structure: HierarchyNode[] = []
-            for (const rootGameObject of rootGameObjects) {
-                structure.push(parseGameObjectToStructureNode(rootGameObject, seenComponentIds))
+            const result: Scene[] = []
+            for (const scene of scenes) {
+                const startTime = Date.now()
+                const name = scene.tryMethod<Il2Cpp.String>("get_name")?.invoke().toString() ?? "Unknown-Scene"
+
+                const getRootGameObjects = scene.tryMethod<Il2Cpp.Array<Il2Cpp.Object>>("GetRootGameObjects")
+                if (getRootGameObjects === undefined) {
+                    console.warn(`Scene ${name} has no GetRootGameObjects method, skipping.`)
+                    continue
+                }
+
+                const rootGameObjects: Il2Cpp.Array<Il2Cpp.Object> = getRootGameObjects.invoke()
+                const roots: HierarchyNode[] = []
+                for (const rootGameObject of rootGameObjects) {
+                    const rgoStart = Date.now()
+                    roots.push(parseGameObjectToStructureNode(rootGameObject, seenComponentIds))
+                    const rgoEnd = Date.now()
+                    console.log(`Parsed root GameObject ${rootGameObject.tryMethod<Il2Cpp.String>("get_name")?.invoke().toString() ?? "Unknown-GameObject"} in ${rgoEnd - rgoStart}ms`)
+                }
+                result.push({ name: name, roots: roots })
+                const endTime = Date.now()
+                console.log(`Parsed scene ${name} with ${roots.length} root GameObjects in ${endTime - startTime}ms`)
             }
             pruneComponents(seenComponentIds)
-            return structure
+            return result
         }),
 })

@@ -113,7 +113,7 @@ def main():
     data_source_type = args.data_source
 
     log.info(f"Starting Frida Unity Inspector at log level: {log_level} with data source: {data_source_type}")
-    if data_source_type == "mock":
+    if data_source_type == "basic_mock" or data_source_type == "complex_mock":
         log.warning("NOTICE: Using mock data source, this data is FAKE. And mainly used for testing frontend and backend integration and usability.")
 
     data_source = build_data_source(args)

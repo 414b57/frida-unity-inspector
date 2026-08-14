@@ -30,7 +30,7 @@ ACCOUNT_FOR_TICK_TIME = True
 # How many properties to poll per tick. Polling too many properties at once can hitch the game thread, so we do it in chunks.
 PROPS_PER_TICK = 3
 
-_STRUCTURE_ADAPTER: TypeAdapter[list[HierarchyNode]] = TypeAdapter(list[HierarchyNode])
+_STRUCTURE_ADAPTER: TypeAdapter[list[Scene]] = TypeAdapter(list[Scene])
 _PROPS_ADAPTER: TypeAdapter[list[Property]] = TypeAdapter(list[Property])
 
 class FridaDataSource(BaseDataSource):
@@ -64,7 +64,7 @@ class FridaDataSource(BaseDataSource):
         self.game_context: GameContext | None = None
         self.scenes: list[SceneDeclaration] | None = None
 
-        self._structure: list[HierarchyNode] | None = None # Cache of hierarchy structure, for change detection and property merging
+        self._structure: list[Scene] | None = None # Cache of loaded scenes (light hierarchy), for change detection and property merging
         self._structure_dump: bytes | None = None  # last serialized structure, if match no changes has occured
         self._component_props: dict[str, list[Property]] = {} # per-component cached property values, keyed by component id
         self._component_prop_dumps: dict[str, bytes] = {}  # per-component serialized props, if match no changes has occured
@@ -181,25 +181,26 @@ class FridaDataSource(BaseDataSource):
         """Refresh the light hierarchy tree; on change, re-key the property and notify subscribers."""
         if not self.session.has_capability(Capabilities.GET_HIERARCHY_STRUCTURE): # If cant get hierarchy structure, then no point in polling for it
             return
-        structure: list[HierarchyNode] | None = await self.session.call_capability(Capabilities.GET_HIERARCHY_STRUCTURE)
-        if structure is None:
+        scenes: list[Scene] | None = await self.session.call_capability(Capabilities.GET_HIERARCHY_STRUCTURE)
+        if scenes is None:
             return
 
-        dump = _STRUCTURE_ADAPTER.dump_json(structure)
+        dump = _STRUCTURE_ADAPTER.dump_json(scenes)
         if dump == self._structure_dump: # If nothing has changed, then no need to re-key the property or notify subscribers
             return
 
-        self._structure = structure
+        self._structure = scenes
         self._structure_dump = dump
 
-        # Re-key the property to the components that exist now.
+        # Re-key the property to the components that exist now, across every loaded scene.
         live_ids: list[str] = []
         def collect(nodes: list[HierarchyNode]) -> None:
             for node in nodes:
                 for component in node.data.components:
                     live_ids.append(component.id)
                 collect(node.children)
-        collect(structure)
+        for scene in scenes:
+            collect(scene.roots)
         self._prop_cycle = live_ids
         live_set = set(live_ids)
 
@@ -207,7 +208,7 @@ class FridaDataSource(BaseDataSource):
             self._component_props.pop(dead_id, None)
             self._component_prop_dumps.pop(dead_id, None)
 
-        self._emit_update(StructureUpdate(scene=Scene(name="TODO", roots=structure))) # TODO - Get scene name
+        self._emit_update(StructureUpdate(scenes=scenes))
 
     async def _poll_property_chunk(self) -> None:
         """Fetch properties of in-scope components in chunks, to avoid hitching the game thread. Notify subscribers of any changes."""
@@ -259,10 +260,10 @@ class FridaDataSource(BaseDataSource):
         """TODO"""
         return self.scenes
 
-    async def get_current_scene(self) -> Scene:
-        """The current scene: light structure with all property values cached so far merged in. Used during initial load of web app."""
+    async def get_loaded_scenes(self) -> list[Scene]:
+        """Every loaded scene: light structure with all property values cached so far merged in. Used during initial load of web app."""
         if self._structure is None:
-            return Scene(name="TODO", roots=[]) # TODO - Get scene name
+            return []
 
         def fill(node: HierarchyNode) -> None:
             for component in node.data.components:
@@ -270,10 +271,11 @@ class FridaDataSource(BaseDataSource):
             for child in node.children:
                 fill(child)
 
-        roots = [root.model_copy(deep=True) for root in self._structure]
-        for root in roots:
-            fill(root)
-        return Scene(name="TODO", roots=roots) # TODO - Get scene name
+        scenes = [scene.model_copy(deep=True) for scene in self._structure]
+        for scene in scenes:
+            for root in scene.roots:
+                fill(root)
+        return scenes
 
     # -- writing data --
     async def set_active(self, object_id: str, active: bool) -> None:

@@ -39,6 +39,7 @@ def _load_models():
 models = _load_models()
 
 HierarchyNode = models.HierarchyNode
+Scene = models.Scene
 Property = models.Property
 
 
@@ -99,15 +100,18 @@ CAPABILITIES: list[Call] = [
     Call("GET_CURRENT_RENDER_PIPELINE", "getCurrentRenderPipeline", Optional[str]),
     Call("GET_SCENE_MANAGER", "getSceneManager", Any),
     Call("GET_CURRENT_SCENE", "getCurrentScene", Any, requires=("GET_SCENE_MANAGER",)),
+    # All currently-loaded scenes (Unity can have several loaded at once, e.g. additive loading).
+    Call("GET_LOADED_SCENES", "getLoadedScenes", Any, requires=("GET_SCENE_MANAGER",)),
 
     # Hierarchy
     # Lightweight tree walk: ids/names/active/tag/layer + component list (id/type/enabled), NO property values.
-    # Cheap to compute. Fetch property values separately per component as needed
+    # Cheap to compute. Fetch property values separately per component as needed.
+    # Returns one Scene per loaded scene, each carrying its own roots (property values omitted).
     Call(
         "GET_HIERARCHY_STRUCTURE",
         "getHierarchyStructure",
-        Optional[list[HierarchyNode]],
-        requires=("GET_CURRENT_SCENE",),
+        Optional[list[Scene]],
+        requires=("GET_LOADED_SCENES",),
     ),
     # Reflection-heavy property scan for a batch of components (ids from the structure walk).
     # A component id that is unknown/stale maps to None so callers can drop it.

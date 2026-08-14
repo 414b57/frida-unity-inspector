@@ -9,6 +9,7 @@ import {Builtins, Events, sendEvent} from "./helpers/protocol"
 import "./capabilities/getCurrentRenderPipeline"
 import "./capabilities/getSceneManager"
 import "./capabilities/getCurrentScene"
+import "./capabilities/getLoadedScenes"
 // Hierarchy/Component getting
 import "./capabilities/getHierarchyStructure"
 // Component property getting

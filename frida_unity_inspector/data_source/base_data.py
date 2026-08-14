@@ -18,9 +18,9 @@ class StatusUpdate(BaseModel):
 
 
 class StructureUpdate(BaseModel):
-    """The (light) hierarchy changed - carries the full new tree, property values omitted."""
+    """The (light) hierarchy changed - carries every loaded scene's full tree, property values omitted."""
     type: Literal["structure"] = "structure"
-    scene: Scene
+    scenes: list[Scene]
 
 class PropertiesUpdate(BaseModel):
     """Fresh property values for some components, keyed by component id."""
@@ -76,8 +76,8 @@ class BaseDataSource(ABC):
         """Get the list of scenes known to the game."""
 
     @abstractmethod
-    async def get_current_scene(self) -> Scene:
-        """Get the currently loaded scene and its hierarchy."""
+    async def get_loaded_scenes(self) -> list[Scene]:
+        """Get every currently-loaded scene and its hierarchy. Unity can have several loaded at once."""
 
     # TODO - Extra methods? I.e. search. etc
 

@@ -5,7 +5,7 @@ from enum import StrEnum
 from typing import Any, Awaitable, Callable, TypeAlias
 
 from pydantic import TypeAdapter
-from ..models import HierarchyNode, Property
+from ..models import Property, Scene
 
 
 class MessageTypes(StrEnum):
@@ -28,6 +28,7 @@ class Capabilities(StrEnum):
     GET_CURRENT_RENDER_PIPELINE = "getCurrentRenderPipeline"
     GET_SCENE_MANAGER = "getSceneManager"
     GET_CURRENT_SCENE = "getCurrentScene"
+    GET_LOADED_SCENES = "getLoadedScenes"
     GET_HIERARCHY_STRUCTURE = "getHierarchyStructure"
     GET_COMPONENT_PROPERTIES = "getComponentProperties"
     SET_GAMEOBJECT_ACTIVE = "setGameObjectActive"
@@ -40,7 +41,8 @@ CAPABILITY_REQUIRES: dict[Capabilities, tuple[Capabilities, ...]] = {
     Capabilities.GET_CURRENT_RENDER_PIPELINE: (),
     Capabilities.GET_SCENE_MANAGER: (),
     Capabilities.GET_CURRENT_SCENE: (Capabilities.GET_SCENE_MANAGER,),
-    Capabilities.GET_HIERARCHY_STRUCTURE: (Capabilities.GET_CURRENT_SCENE,),
+    Capabilities.GET_LOADED_SCENES: (Capabilities.GET_SCENE_MANAGER,),
+    Capabilities.GET_HIERARCHY_STRUCTURE: (Capabilities.GET_LOADED_SCENES,),
     Capabilities.GET_COMPONENT_PROPERTIES: (Capabilities.GET_HIERARCHY_STRUCTURE,),
     Capabilities.SET_GAMEOBJECT_ACTIVE: (),
     Capabilities.SET_COMPONENT_ENABLED: (),
@@ -66,7 +68,8 @@ _PING_RETURN: TypeAdapter[Any] = TypeAdapter(tuple[float, float])
 _GET_CURRENT_RENDER_PIPELINE_RETURN: TypeAdapter[Any] = TypeAdapter(str | None)
 _GET_SCENE_MANAGER_RETURN: TypeAdapter[Any] = TypeAdapter(Any)
 _GET_CURRENT_SCENE_RETURN: TypeAdapter[Any] = TypeAdapter(Any)
-_GET_HIERARCHY_STRUCTURE_RETURN: TypeAdapter[Any] = TypeAdapter(list[HierarchyNode] | None)
+_GET_LOADED_SCENES_RETURN: TypeAdapter[Any] = TypeAdapter(Any)
+_GET_HIERARCHY_STRUCTURE_RETURN: TypeAdapter[Any] = TypeAdapter(list[Scene] | None)
 _GET_COMPONENT_PROPERTIES_RETURN: TypeAdapter[Any] = TypeAdapter(dict[str, list[Property] | None])
 _SET_GAMEOBJECT_ACTIVE_RETURN: TypeAdapter[Any] = TypeAdapter(bool)
 _SET_COMPONENT_ENABLED_RETURN: TypeAdapter[Any] = TypeAdapter(bool)
@@ -103,6 +106,7 @@ class AgentRpc:
                 Capabilities.GET_CURRENT_RENDER_PIPELINE: self.get_current_render_pipeline,
                 Capabilities.GET_SCENE_MANAGER: self.get_scene_manager,
                 Capabilities.GET_CURRENT_SCENE: self.get_current_scene,
+                Capabilities.GET_LOADED_SCENES: self.get_loaded_scenes,
                 Capabilities.GET_HIERARCHY_STRUCTURE: self.get_hierarchy_structure,
                 Capabilities.GET_COMPONENT_PROPERTIES: self.get_component_properties,
                 Capabilities.SET_GAMEOBJECT_ACTIVE: self.set_gameobject_active,
@@ -144,7 +148,11 @@ class AgentRpc:
         result = await self._call(Capabilities.GET_CURRENT_SCENE)
         return _GET_CURRENT_SCENE_RETURN.validate_python(result)
 
-    async def get_hierarchy_structure(self) -> list[HierarchyNode] | None:
+    async def get_loaded_scenes(self) -> Any:
+        result = await self._call(Capabilities.GET_LOADED_SCENES)
+        return _GET_LOADED_SCENES_RETURN.validate_python(result)
+
+    async def get_hierarchy_structure(self) -> list[Scene] | None:
         result = await self._call(Capabilities.GET_HIERARCHY_STRUCTURE)
         return _GET_HIERARCHY_STRUCTURE_RETURN.validate_python(result)
 

@@ -62,7 +62,7 @@ class SimpleListWebApp(BaseWebApp):
         self.add_api_route("/api/status", self.status, methods=["GET"])
         self.add_api_route("/api/game_context", self.game_context, methods=["GET"])
         self.add_api_route("/api/scenes", self.scenes, methods=["GET"])
-        self.add_api_route("/api/current_scene", self.current_scene, methods=["GET"])
+        self.add_api_route("/api/loaded_scenes", self.loaded_scenes, methods=["GET"])
 
         self.add_api_route("/api/set_active", self.set_active, methods=["POST"])
         self.add_api_route("/api/set_component_enabled", self.set_component_enabled, methods=["POST"])
@@ -114,12 +114,12 @@ class SimpleListWebApp(BaseWebApp):
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    async def current_scene(self) -> dict:
+    async def loaded_scenes(self) -> list[dict]:
         try:
-            current_scene = await self.datasource.get_current_scene()
-            if current_scene is None:
-                raise HTTPException(status_code=503, detail="Current scene is not available.")
-            return current_scene.model_dump()
+            loaded_scenes = await self.datasource.get_loaded_scenes()
+            if loaded_scenes is None:
+                raise HTTPException(status_code=503, detail="Loaded scenes are not available.")
+            return [scene.model_dump() for scene in loaded_scenes]
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 

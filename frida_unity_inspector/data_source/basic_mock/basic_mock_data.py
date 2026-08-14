@@ -117,7 +117,12 @@ class BasicMockDataSource(BaseDataSource):
                                     enabled=True,
                                     expanded=True,
                                     properties=[
-                                        EnumProperty(label="Type", options=["Spot", "Directional", "Point", "Area"], value="Directional"),
+                                        EnumProperty(label="Type", options={
+                                            "Spot":0,
+                                            "Directional":1,
+                                            "Point":2,
+                                            "Area":3
+                                        }, value=1),
                                         ColorProperty(label="Color", value=Color(r=1.0, g=1.0, b=1.0, a=1.0)),
                                         FloatProperty(label="Intensity", value=1.0),
                                     ]
@@ -223,6 +228,60 @@ class BasicMockDataSource(BaseDataSource):
                                 )
                             )
                         ]
+                    )
+                ]
+            ),
+            Scene(
+                name="AnotherScene",
+                roots=[
+                    HierarchyNode(
+                        id="5",
+                        name="Sphere",
+                        icon="cube",
+                        data = GameObjectData(
+                            active=True,
+                            # is_static=False,
+                            tag="Untagged",
+                            layer=0,
+                            components=[
+                                Component(
+                                    id="5-1",
+                                    name="Transform",
+                                    type="Transform",
+                                    icon="move",
+                                    enabled=None, # Transform cannot be toggled
+                                    expanded=True,
+                                    properties=[
+                                        Vector3Property(label="Position", value=Vector3(x=2, y=1, z=0)),
+                                        Vector3Property(label="Rotation", value=Vector3(x=0, y=0, z=0)),
+                                        Vector3Property(label="Scale", value=Vector3(x=1, y=1, z=1)),
+                                    ]
+                                ),
+                                Component(
+                                    id="5-2",
+                                    name="Mesh Renderer",
+                                    type="Mesh Renderer",
+                                    icon="cube",
+                                    enabled=True,
+                                    expanded=True,
+                                    properties=[
+                                        StringProperty(label="Material", value="Default-Material"),
+                                    ]
+                                ),
+                                Component(
+                                    id="5-3",
+                                    name="Sphere Collider",
+                                    type="Sphere Collider",
+                                    icon="cube",
+                                    enabled=True,
+                                    expanded=True,
+                                    properties=[
+                                        BoolProperty(label="Is Trigger", value=False),
+                                    ]
+                                )
+                            ]
+                        ),
+                        children=[]
                     )
                 ]
             )
@@ -339,9 +398,9 @@ class BasicMockDataSource(BaseDataSource):
         """Return a list of mock scene declarations."""
         return self._game_context.scenes
 
-    async def get_current_scene(self) -> Scene:
-        """Return a mock current scene with hierarchy."""
-        return self._scenes[0]
+    async def get_loaded_scenes(self) -> list[Scene]:
+        """Return the mock loaded scenes with their hierarchy."""
+        return self._scenes
 
     # -- writing data --
     def _find_node(self, object_id: str) -> HierarchyNode:

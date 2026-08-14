@@ -3362,6 +3362,7 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     GET_CURRENT_RENDER_PIPELINE: "getCurrentRenderPipeline",
     GET_SCENE_MANAGER: "getSceneManager",
     GET_CURRENT_SCENE: "getCurrentScene",
+    GET_LOADED_SCENES: "getLoadedScenes",
     GET_HIERARCHY_STRUCTURE: "getHierarchyStructure",
     GET_COMPONENT_PROPERTIES: "getComponentProperties",
     SET_GAMEOBJECT_ACTIVE: "setGameObjectActive",
@@ -3372,7 +3373,8 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
     "getCurrentRenderPipeline": [],
     "getSceneManager": [],
     "getCurrentScene": ["getSceneManager"],
-    "getHierarchyStructure": ["getCurrentScene"],
+    "getLoadedScenes": ["getSceneManager"],
+    "getHierarchyStructure": ["getLoadedScenes"],
     "getComponentProperties": ["getHierarchyStructure"],
     "setGameObjectActive": [],
     "setComponentEnabled": [],
@@ -3469,6 +3471,27 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       const getActiveScene = sceneManager.tryMethod("GetActiveScene");
       if (getActiveScene === null) return null;
       return getActiveScene.invoke();
+    })
+  });
+
+  // capabilities/getLoadedScenes.ts
+  defineCapability({
+    name: Capabilities.GET_LOADED_SCENES,
+    detect: () => method("UnityEngine.CoreModule", "UnityEngine.SceneManagement.SceneManager", "GetSceneAt") !== null && method("UnityEngine.CoreModule", "UnityEngine.SceneManagement.SceneManager", "get_sceneCount") !== null,
+    implementation: () => Il2Cpp.perform(async () => {
+      const sceneManager = await getCapability(Capabilities.GET_SCENE_MANAGER)();
+      if (sceneManager === null) return [];
+      const getSceneCount = sceneManager.tryMethod("get_sceneCount");
+      const getSceneAt = sceneManager.tryMethod("GetSceneAt");
+      if (getSceneCount === null || getSceneAt === null) return [];
+      const count = getSceneCount.invoke();
+      const scenes = [];
+      for (let i = 0; i < count; i++) {
+        const scene = getSceneAt.invoke(i);
+        const isLoaded = scene.tryMethod("get_isLoaded")?.invoke() ?? false;
+        if (isLoaded) scenes.push(scene);
+      }
+      return scenes;
     })
   });
 
@@ -4159,18 +4182,32 @@ ${this.isEnum ? `enum` : this.isStruct ? `struct` : this.isInterface ? `interfac
       return method("UnityEngine.CoreModule", "UnityEngine.SceneManagement.Scene", "GetRootGameObjects") !== null && method("UnityEngine.CoreModule", "UnityEngine.GameObject", "GetComponents", 1) !== null;
     },
     implementation: () => Il2Cpp.perform(async () => {
-      const scene = await getCapability(Capabilities.GET_CURRENT_SCENE)();
-      if (scene === null) return null;
-      const getRootGameObjects = scene.tryMethod("GetRootGameObjects");
-      if (getRootGameObjects === void 0) return null;
-      const rootGameObjects = getRootGameObjects.invoke();
+      const scenes = await getCapability(Capabilities.GET_LOADED_SCENES)();
+      if (scenes === null) return null;
       const seenComponentIds = /* @__PURE__ */ new Set();
-      const structure = [];
-      for (const rootGameObject of rootGameObjects) {
-        structure.push(parseGameObjectToStructureNode(rootGameObject, seenComponentIds));
+      const result = [];
+      for (const scene of scenes) {
+        const startTime = Date.now();
+        const name = scene.tryMethod("get_name")?.invoke().toString() ?? "Unknown-Scene";
+        const getRootGameObjects = scene.tryMethod("GetRootGameObjects");
+        if (getRootGameObjects === void 0) {
+          console.warn(`Scene ${name} has no GetRootGameObjects method, skipping.`);
+          continue;
+        }
+        const rootGameObjects = getRootGameObjects.invoke();
+        const roots = [];
+        for (const rootGameObject of rootGameObjects) {
+          const rgoStart = Date.now();
+          roots.push(parseGameObjectToStructureNode(rootGameObject, seenComponentIds));
+          const rgoEnd = Date.now();
+          console.log(`Parsed root GameObject ${rootGameObject.tryMethod("get_name")?.invoke().toString() ?? "Unknown-GameObject"} in ${rgoEnd - rgoStart}ms`);
+        }
+        result.push({ name, roots });
+        const endTime = Date.now();
+        console.log(`Parsed scene ${name} with ${roots.length} root GameObjects in ${endTime - startTime}ms`);
       }
       pruneComponents(seenComponentIds);
-      return structure;
+      return result;
     })
   });
 

@@ -46,6 +46,12 @@
         }
         button:hover { background: #4c4c4c; }
 
+        /* -- scenes -- */
+        .scene { margin-bottom: 1rem; }
+        .scene + .scene { border-top: 1px solid #3c3c3c; padding-top: 0.75rem; }
+        .scene-header { margin-bottom: 0.25rem; }
+        .scene-header b { color: #4ec9b0; }
+
         /* -- scene tree -- */
         details.node, details.component {
             margin: 0.15rem 0;
@@ -133,12 +139,12 @@
     </section>
 
     <section>
-        <h2>Current Scene</h2>
+        <h2>Loaded Scenes</h2>
         <div>
             <button id="expand-all">Expand all</button>
             <button id="collapse-all">Collapse all</button>
         </div>
-        <div id="current-scene" class="muted">Loading...</div>
+        <div id="scenes" class="muted">Loading...</div>
     </section>
 
     <script>
@@ -606,36 +612,56 @@
             place(container, entry.details, index);
         }
 
-        let sceneHeaderName = null;
-        let sceneRootsWrap = null;
-        let sceneEmptyMsg = null;
+        // Keyed scene registry - keyed by scene name so expand/collapse state and
+        // in-progress edits survive live updates. Unity can have several scenes loaded at once.
+        const sceneEls = new Map(); // scene name -> {section, nameEl, emptyMsg, rootsWrap}
+        let scenesContainer = null;
 
-        function ensureSceneSkeleton() {
-            if (sceneRootsWrap) return;
-            const container = document.getElementById("current-scene");
-            container.classList.remove("muted");
-            container.replaceChildren();
-            const header = el("div", null, "Scene: ");
-            sceneHeaderName = el("b", null, "");
-            header.appendChild(sceneHeaderName);
-            sceneEmptyMsg = el("div", "muted", "(empty scene)");
-            sceneEmptyMsg.style.display = "none";
-            sceneRootsWrap = el("div");
-            container.append(header, sceneEmptyMsg, sceneRootsWrap);
+        function ensureScenesContainer() {
+            if (scenesContainer) return scenesContainer;
+            scenesContainer = document.getElementById("scenes");
+            scenesContainer.classList.remove("muted");
+            scenesContainer.replaceChildren();
+            return scenesContainer;
         }
 
-        function applyScene(scene, includeProperties) {
-            ensureSceneSkeleton();
-            sceneHeaderName.textContent = scene.name;
-            sceneEmptyMsg.style.display = scene.roots.length ? "none" : "";
+        function createScene(scene) {
+            const section = el("div", "scene");
+            const header = el("div", "scene-header", "Scene: ");
+            const nameEl = el("b", null, "");
+            header.appendChild(nameEl);
+            const emptyMsg = el("div", "muted", "(empty scene)");
+            emptyMsg.style.display = "none";
+            const rootsWrap = el("div");
+            section.append(header, emptyMsg, rootsWrap);
+            const entry = { section, nameEl, emptyMsg, rootsWrap };
+            sceneEls.set(scene.name, entry);
+            return entry;
+        }
+
+        function applyScenes(scenes, includeProperties) {
+            const container = ensureScenesContainer();
 
             const seenNodes = new Set();
             const seenComponents = new Set();
-            scene.roots.forEach((root, i) => {
-                reconcileNode(root, sceneRootsWrap, i, seenNodes, seenComponents, includeProperties);
+            const seenScenes = new Set();
+
+            scenes.forEach((scene, i) => {
+                seenScenes.add(scene.name);
+                let entry = sceneEls.get(scene.name);
+                if (!entry) entry = createScene(scene);
+                entry.nameEl.textContent = scene.name;
+                entry.emptyMsg.style.display = scene.roots.length ? "none" : "";
+                scene.roots.forEach((root, j) => {
+                    reconcileNode(root, entry.rootsWrap, j, seenNodes, seenComponents, includeProperties);
+                });
+                place(container, entry.section, i);
             });
 
-            // Drop elements for anything that no longer exists.
+            // Drop elements for any scene / node / component that no longer exists.
+            for (const [name, entry] of sceneEls) {
+                if (!seenScenes.has(name)) { entry.section.remove(); sceneEls.delete(name); }
+            }
             for (const [id, entry] of nodeEls) {
                 if (!seenNodes.has(id)) { entry.details.remove(); nodeEls.delete(id); }
             }
@@ -666,7 +692,7 @@
                 let msg;
                 try { msg = JSON.parse(event.data); } catch { return; }
                 if (msg.type === "status") renderStatus(document.getElementById("status"), msg.status);
-                else if (msg.type === "structure") applyScene(msg.scene, false);
+                else if (msg.type === "structure") applyScenes(msg.scenes, false);
                 else if (msg.type === "properties") applyProperties(msg.components);
             };
             ws.onclose = () => {
@@ -680,7 +706,7 @@
         async function refresh() {
             const statusEl = document.getElementById("status");
             const ctxEl = document.getElementById("game-context");
-            const sceneEl = document.getElementById("current-scene");
+            const sceneEl = document.getElementById("scenes");
 
             fetchJson("/api/status").then(s => renderStatus(statusEl, s)).catch(e => showError(statusEl, "Status", e));
 
@@ -695,15 +721,16 @@
             }
 
             try {
-                applyScene(await fetchJson("/api/current_scene"), true);
+                applyScenes(await fetchJson("/api/loaded_scenes"), true);
             } catch (e) {
-                sceneRootsWrap = null; // showError blows away the skeleton; rebuild it next time
-                showError(sceneEl, "Current Scene", e);
+                scenesContainer = null; // showError blows away the container; rebuild it next time
+                sceneEls.clear();
+                showError(sceneEl, "Loaded Scenes", e);
             }
         }
 
         function setAllDetails(open) {
-            for (const details of document.querySelectorAll("#current-scene details")) details.open = open;
+            for (const details of document.querySelectorAll("#scenes details")) details.open = open;
         }
 
         document.getElementById("refresh").addEventListener("click", refresh);

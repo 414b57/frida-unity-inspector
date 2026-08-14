@@ -1,5 +1,5 @@
 /* AUTO-GENERATED from ../../protocol_spec.py + ../../../models.py - do not edit by hand. */
-import type { HierarchyNode, Property } from "./models"
+import type { Property, Scene } from "./models"
 
 export const MessageTypes = {
     EVENT: "event",
@@ -24,6 +24,7 @@ export const Capabilities = {
     GET_CURRENT_RENDER_PIPELINE: "getCurrentRenderPipeline",
     GET_SCENE_MANAGER: "getSceneManager",
     GET_CURRENT_SCENE: "getCurrentScene",
+    GET_LOADED_SCENES: "getLoadedScenes",
     GET_HIERARCHY_STRUCTURE: "getHierarchyStructure",
     GET_COMPONENT_PROPERTIES: "getComponentProperties",
     SET_GAMEOBJECT_ACTIVE: "setGameObjectActive",
@@ -37,7 +38,8 @@ export const CapabilityRequires: Record<CapabilityName, readonly CapabilityName[
     "getCurrentRenderPipeline": [],
     "getSceneManager": [],
     "getCurrentScene": ["getSceneManager"],
-    "getHierarchyStructure": ["getCurrentScene"],
+    "getLoadedScenes": ["getSceneManager"],
+    "getHierarchyStructure": ["getLoadedScenes"],
     "getComponentProperties": ["getHierarchyStructure"],
     "setGameObjectActive": [],
     "setComponentEnabled": [],
@@ -55,7 +57,8 @@ export interface CapabilitySignatures {
     "getCurrentRenderPipeline": () => string | null | Promise<string | null>
     "getSceneManager": () => any | Promise<any>
     "getCurrentScene": () => any | Promise<any>
-    "getHierarchyStructure": () => HierarchyNode[] | null | Promise<HierarchyNode[] | null>
+    "getLoadedScenes": () => any | Promise<any>
+    "getHierarchyStructure": () => Scene[] | null | Promise<Scene[] | null>
     "getComponentProperties": (component_ids: string[]) => Record<string, Property[] | null> | Promise<Record<string, Property[] | null>>
     "setGameObjectActive": (gameobject_handle_ptr: string, active: boolean) => boolean | Promise<boolean>
     "setComponentEnabled": (component_handle_ptr: string, active: boolean) => boolean | Promise<boolean>
