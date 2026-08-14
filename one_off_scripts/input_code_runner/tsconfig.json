@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "es2020",
+    "moduleResolution": "node",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowUnreachableCode": true,
+    // Both are ambient/global type packages, so `Il2Cpp` and the frida-gum
+    // globals are available in code.ts WITHOUT any import statement.
+    "types": ["frida-gum", "frida-il2cpp-bridge"]
+  },
+  "include": [
+    "code.ts",
+    "index.ts"
+  ]
+}
