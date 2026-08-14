@@ -70,6 +70,12 @@ function bootstrap() {
     })
 }
 
-setTimeout(bootstrap, 3000)
-
 sendEvent(Events.AGENT_LOADED, null)
+
+recv("set_unity_version", (message) => {
+    if (message.unity_version && typeof message.unity_version === "string") {
+        Il2Cpp.$config.unityVersion = message.unity_version
+    }
+
+    setTimeout(bootstrap, 3000)
+})

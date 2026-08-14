@@ -41,13 +41,14 @@ class FridaDataSource(BaseDataSource):
     def logger(self) -> logging.Logger:
         return logging.getLogger(f"fui.data_source.frida")
 
-    def __init__(self, device: str, package: str, spawn: bool, kill_on_stop: bool) -> None:
+    def __init__(self, device: str, package: str, spawn: bool, kill_on_stop: bool, unity_version: str | None = None) -> None:
         super().__init__()
         # args
         self.device = device
         self.package = package
         self.spawn = spawn
         self.kill_on_stop = kill_on_stop
+        self.unity_version = unity_version
 
         # runtime - internal state
         self.frida_device: frida.core.Device | None = None
@@ -102,6 +103,10 @@ class FridaDataSource(BaseDataSource):
         if not success:
             raise RuntimeError(f"Failed to inject Frida agent into package {self.package} on device {self.frida_device.id}")
         self.logger.trace(f"Frida agent injected/spawned into package {self.package} on device {self.frida_device.id}")
+
+        self.frida_injector._script.post({"type": "set_unity_version", "unity_version": self.unity_version})
+        if self.unity_version is not None:
+            self.logger.trace(f"Unity version set to {self.unity_version} in agent")
 
         self._run_loop_task = asyncio.create_task(self._run())
 
