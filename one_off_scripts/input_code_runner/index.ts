@@ -8,10 +8,15 @@ function perform() {
         recv("execute", (message) => {
             console.log(JSON.stringify(message))
             const code = message.code;
+            const args = message.args || [];
             console.log("[+] Received input code to execute:\n" + code);
+            console.log("[+] With args: " + JSON.stringify(args));
             try {
                 Il2Cpp.perform(() => {
                     console.log("perform started for code execution")
+
+                    globalThis.SCRIPT_ARGS = args;
+
                     const result = (0, eval)(code);
                     let repr;
                     try {
@@ -21,6 +26,7 @@ function perform() {
                     }
                     send({type: "event", event: "code_executed", result: repr});
                 })
+
             } catch (error) {
                 send({ type: "event", event: "code_execution_error", error: error.stack || error.message });
             } finally {

@@ -8,12 +8,22 @@
     "skipLibCheck": true,
     "noEmit": true,
     "allowUnreachableCode": true,
+    // Treat every file as its own module scope even though the stubs have no
+    // import/export (they're eval'd as bare scripts by the runner). Without this,
+    // tsc lumps all included files into one global scope and flags TS2451
+    // "Cannot redeclare block-scoped variable" for the identical top-level names
+    // (args, indent, dumpGameObject, ...) shared across stubs. esbuild ignores this
+    // option, so the emitted JS stays plain/eval-safe.
+    "moduleDetection": "force",
     // Both are ambient/global type packages, so `Il2Cpp` and the frida-gum
     // globals are available in code.ts WITHOUT any import statement.
     "types": ["frida-gum", "frida-il2cpp-bridge"]
   },
   "include": [
-    "code.ts",
-    "index.ts"
+    "index.ts",
+    "*.ts",
+    "./**/*.ts",
+    "stubs/*.ts",
+    "stubs/**/*.ts"
   ]
 }

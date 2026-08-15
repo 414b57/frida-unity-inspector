@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 import subprocess
 import threading
 import frida
@@ -78,14 +79,16 @@ def load_code(path: str) -> str | None:
         return f.read()
 
 
-def run_code(script, path: str) -> None:
+def run_code(script, path: str, args: list[str] | None = None) -> None:
+    args = args or []
     code = load_code(path)
     if code is None or not code.strip():
         print("[!] Nothing to run (file empty).")
         return
-    print(f"[>] Sending {os.path.relpath(path, SCRIPT_DIR)} ({len(code)} chars)...")
+    suffix = f" args={args}" if args else ""
+    print(f"[>] Sending {os.path.relpath(path, SCRIPT_DIR)} ({len(code)} chars){suffix}...")
     response_event.clear()
-    script.post({'type': 'execute', 'code': code})
+    script.post({'type': 'execute', 'code': code, 'args': args})
     # Wait for the agent to acknowledge so results print before the next prompt.
     if not response_event.wait(timeout=15):
         print("[!] No response within 15s (still running or agent stuck).")
@@ -125,7 +128,8 @@ def main() -> None:
 
     print("\n=== Hot reload ready ===")
     print(f"Edit {os.path.relpath(CODE_FILE, SCRIPT_DIR)} then press ENTER to run it.")
-    print("Commands: <ENTER>=run code.ts | r <path>=run file | q/exit=quit\n")
+    print("Commands: <ENTER>=run code.ts | r <path> [args...]=run file | q/exit=quit")
+    print("Examples: r stubs/dump_scene.ts 0 | r stubs/dump_object.ts Player\n")
 
     while True:
         try:
@@ -142,12 +146,19 @@ def main() -> None:
             run_code(script, CODE_FILE)
             continue
 
-        # Otherwise treat input as a target file: `r <path>` or just `<path>`.
-        parts = user_input.split(None, 1)
-        target = parts[1] if parts[0].lower() == "r" and len(parts) == 2 else user_input
+        # Otherwise treat input as `[r] <path> [args...]`. Tokens after the path are
+        # forwarded to the stub as SCRIPT_ARGS (e.g. a scene index or object name).
+        tokens = shlex.split(user_input, posix=False)
+        if tokens and tokens[0].lower() == "r":
+            tokens = tokens[1:]
+        if not tokens:
+            print("[!] No target file given (press ENTER alone to run code.ts).")
+            continue
+
+        target, args = tokens[0], [t.strip('"') for t in tokens[1:]]
         target = target if os.path.isabs(target) else os.path.join(SCRIPT_DIR, target)
         if os.path.exists(target):
-            run_code(script, target)
+            run_code(script, target, args)
         else:
             print(f"[!] Not a file: {target} (press ENTER alone to run code.ts)")
 
