@@ -151,6 +151,8 @@ def main() -> None:
     emit(f"Full output (incl. large dumps) is tailing into {os.path.basename(LOG_FILE)}")
     emit("Examples: r stubs/dump_scene.ts 0 | r stubs/dump_object.ts Player\n")
 
+    LAST_CODE_RUN = None
+
     while True:
         try:
             user_input = input("run> ").strip()
@@ -166,21 +168,27 @@ def main() -> None:
             run_code(script, CODE_FILE)
             continue
 
-        # Otherwise treat input as `[r] <path> [args...]`. Tokens after the path are
-        # forwarded to the stub as SCRIPT_ARGS (e.g. a scene index or object name).
+        # if it is `r <path> [args...]`, parse the path and args and call it
+        # if it is `<path> [args...]`, parse the path and args and call it
+        # if it is JUST `r`, then run the last code run (if any)
         tokens = shlex.split(user_input, posix=False)
         if tokens and tokens[0].lower() == "r":
             tokens = tokens[1:]
-        if not tokens:
-            emit("[!] No target file given (press ENTER alone to run code.ts).")
-            continue
+            if not tokens:
+                if LAST_CODE_RUN:
+                    run_code(script, *LAST_CODE_RUN)
+                else:
+                    emit("[!] No previous code run to repeat.")
+                continue
 
         target, args = tokens[0], [t.strip('"') for t in tokens[1:]]
         target = target if os.path.isabs(target) else os.path.join(SCRIPT_DIR, target)
         if os.path.exists(target):
             run_code(script, target, args)
+            LAST_CODE_RUN = [target, args]
         else:
             emit(f"[!] Not a file: {target} (press ENTER alone to run code.ts)")
+
 
     session.detach()
 

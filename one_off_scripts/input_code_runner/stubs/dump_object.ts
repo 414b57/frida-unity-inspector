@@ -29,7 +29,14 @@ const componentClass = Il2Cpp.domain
     ?.image.tryClass("UnityEngine.Component")
 
 function gameObjectName(gameObject: Il2Cpp.Object): string {
-    return gameObject.tryMethod<Il2Cpp.String>("get_name")?.invoke()?.toString() ?? "<unnamed>"
+    const name = gameObject.tryMethod<Il2Cpp.String>("get_name")?.invoke()?.toString() ?? "<unnamed>"
+
+    // strip the `"`s that Unity adds to the name of a GameObject if it contains a comma, e.g. `"My Object, 1"`.
+    if (name.startsWith('"') && name.endsWith('"')) {
+        return name.slice(1, -1)
+    }
+
+    return name
 }
 
 // Identical renderer to dump_scene.ts so the output format matches exactly.
@@ -66,7 +73,9 @@ function dumpGameObject(gameObject: Il2Cpp.Object, depth: number): void {
 
 // Walk one object's subtree collecting every GameObject whose name matches.
 function collectMatches(gameObject: Il2Cpp.Object, name: string, out: Il2Cpp.Object[]): void {
-    if (gameObjectName(gameObject) === name) out.push(gameObject)
+    const goName = gameObjectName(gameObject)
+    console.log(`[dump_object] checking GameObject "${goName}" against target "${name}"`)
+    if (goName === name) out.push(gameObject)
 
     const transform = gameObject.tryMethod<Il2Cpp.Object>("get_transform")?.invoke() ?? null
     if (!transform) return
@@ -98,6 +107,7 @@ if (!targetName) {
             for (let s = 0; s < sceneCount; s++) {
                 const scene = getSceneAt.invoke(s)
                 const getRoots = scene.tryMethod<Il2Cpp.Array<Il2Cpp.Object>>("GetRootGameObjects")
+                console.log(`[dump_object] scene ${s} has ${getRoots ? getRoots.invoke().length : 0} root GameObjects`)
                 if (!getRoots) continue
                 for (const root of getRoots.invoke()) {
                     collectMatches(root, targetName, matches)
